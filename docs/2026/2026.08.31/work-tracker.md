@@ -189,6 +189,12 @@
 - `./run docker`(= `up --build`), `./run docker-down`. `WITH_DEMUCS=1 ./run docker`.
 - ⚠️ 컨테이너는 Linux — CoreML/MPS 없음. Stemdeck 미동작(→demucs), torch CPU.
   librosa 폴백 분석은 정상. CoreML 필요 시 로컬 `./run`.
+- `.github/workflows/docker-publish.yml` : `main` push / `v*.*.*` 태그 / 수동 시
+  amd64(`ubuntu-latest`)+arm64(`ubuntu-24.04-arm`) 매트릭스 빌드 → push-by-digest →
+  merge job이 멀티아치 매니페스트를 GHCR에 발행
+  (`ghcr.io/jkove94/autoscore-{backend,frontend}`, `provenance:false`, gha 캐시).
+  `docker-compose.yml` 에 `image:` 추가 → `docker compose pull` 가능.
+  `.dockerignore` 에 `.env`/`.github` 추가. **최초 발행 후 Packages 를 Public 전환 필요.**
 
 ## 후속 검증 항목 (기능 구현 완료, 환경 제약으로 미실행)
 

@@ -65,6 +65,23 @@ WITH_DEMUCS=1 ./run docker      # + demucs(CPU) 포함 → Stemdeck 없이 모�
 
 소스는 bind-mount 되어 핫리로드됩니다. 분석 결과는 `autoscore-data` 볼륨에 유지됩니다.
 
+**빌드 없이 바로 실행** (GitHub Actions가 `main` push마다 GHCR에 멀티아치 이미지 발행):
+
+```bash
+docker compose pull && docker compose up          # ghcr.io 이미지 사용
+# 또는 단독으로
+docker run -p 8000:8000 ghcr.io/jkove94/autoscore-backend:latest
+docker run -p 5173:5173 -e VITE_API_TARGET=http://host.docker.internal:8000 \
+  ghcr.io/jkove94/autoscore-frontend:latest
+```
+
+| 이미지 | 태그 |
+|---|---|
+| `ghcr.io/jkove94/autoscore-backend` | `latest`, `main`, `sha-xxxxxxx`, 릴리스 태그 시 `1.2.3` |
+| `ghcr.io/jkove94/autoscore-frontend` | 〃 |
+
+> 최초 발행 후 GitHub → Packages 에서 각 패키지를 **Public** 으로 전환하고 repo에 연결하세요.
+
 > ⚠️ 컨테이너는 Linux 라서 **Apple Silicon 가속 경로가 없습니다** — Stemdeck(CoreML) 미동작,
 > torch 는 CPU(`TORCH_DEVICE=cpu`). librosa 폴백 분석은 정상 동작하며, 음원 분리는
 > `WITH_DEMUCS=1` 로 빌드해 CPU demucs 를 씁니다. CoreML 가속이 필요하면 로컬(`./run`)로 실행하세요.

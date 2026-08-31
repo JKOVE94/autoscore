@@ -1,5 +1,8 @@
 # keep build contexts small and reproducible
 .git
+.github
+**/.env
+**/.env.local
 **/.venv
 **/node_modules
 **/dist
