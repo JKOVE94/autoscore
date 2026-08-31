@@ -8,6 +8,11 @@ pydantic-settings==2.7.1
 # --- Music / notation ---
 music21==9.3.0
 
+# --- URL / YouTube audio ingestion (input mode 1) ---
+# Unpinned on purpose: YouTube changes frequently break older yt-dlp releases.
+# Requires ffmpeg on PATH (brew install ffmpeg).
+yt-dlp
+
 # --- Audio analysis (Step 2) — fallback path (required) ---
 # The whole backend targets Python 3.11 (no 3.14 wheels for the audio stack).
 librosa==0.10.2.post1

@@ -61,6 +61,7 @@ export default function App() {
           <UploadPanel
             disabled={running}
             onRunSingle={pipe.runSingle}
+            onRunUrl={pipe.runUrl}
             onRunStems={pipe.runStems}
             onRunImage={pipe.runImage}
           />

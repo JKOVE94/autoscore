@@ -57,6 +57,11 @@ class AudioAnalysisError(AutoScoreError):
     code = "audio_analysis_failed"
 
 
+class YouTubeError(AutoScoreError):
+    status_code = 502
+    code = "youtube_fetch_failed"
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AutoScoreError)
     async def _handle(_: Request, exc: AutoScoreError) -> JSONResponse:

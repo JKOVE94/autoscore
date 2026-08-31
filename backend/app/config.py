@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     java_bin: str = "java"
     omr_timeout: int = 600
 
+    # YouTube / URL audio ingestion (yt-dlp + ffmpeg)
+    youtube_enabled: bool = True
+    ffmpeg_bin: str = "ffmpeg"
+    youtube_max_duration_sec: int = 900
+    youtube_allowed_hosts: str = (
+        "youtube.com,www.youtube.com,m.youtube.com,music.youtube.com,youtu.be"
+    )
+
     torch_device: str = "mps"
 
     # --- Step 2: audio analysis ---
@@ -48,6 +56,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def youtube_allowed_host_list(self) -> list[str]:
+        return [h.strip().lower() for h in self.youtube_allowed_hosts.split(",") if h.strip()]
 
     @property
     def storage_path(self) -> Path:

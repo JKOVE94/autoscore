@@ -21,9 +21,11 @@ def test_health_reports_engine_status(client):
     assert body["status"] == "ok"
     assert body["app_env"] == "test"
     names = {e["name"] for e in body["engines"]}
-    assert names == {"stemdeck", "audiveris"}
-    # Neither engine is configured in the test environment.
-    assert all(e["configured"] is False for e in body["engines"])
+    assert names == {"stemdeck", "audiveris", "yt-dlp"}
+    # stemdeck / audiveris are not configured in the test environment
+    by_name = {e["name"]: e for e in body["engines"]}
+    assert by_name["stemdeck"]["configured"] is False
+    assert by_name["audiveris"]["configured"] is False
 
 
 def test_upload_rejects_unknown_extension(client):

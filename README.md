@@ -57,6 +57,7 @@ cp .env.example .env
 |------|------|----------|
 | Stemdeck | https://github.com/stemdeckapp/stemdeck | `STEMDECK_BIN` (미설정 시 `STEM_FALLBACK=demucs` 가능) |
 | Audiveris | https://github.com/Audiveris/audiveris (Java 17+) | `AUDIVERIS_BIN` |
+| yt-dlp + ffmpeg | `pip install yt-dlp` · `brew install ffmpeg` | `FFMPEG_BIN`, `YOUTUBE_ALLOWED_HOSTS`, `YOUTUBE_MAX_DURATION_SEC` |
 
 ### 3. 엔진 연동 검증
 
@@ -82,6 +83,7 @@ uvicorn app.main:app --reload
 | POST | `/api/analyze/{job_id}` | Step 2: 분리된 stem에서 BPM/key/코드/멜로디 추출 (`{"window":[t0,t1]}` 옵션) |
 | GET | `/api/analyze/backends` | 분석 백엔드(basic-pitch/essentia/madmom/librosa) 가용성 |
 | POST | `/api/upload-stems` | 입력모드 2: 사전 분리 stem 여러 개를 한 job으로 업로드 |
+| POST | `/api/upload-url` | 입력모드 1(URL): YouTube 등 링크에서 오디오 추출(yt-dlp) → 이후 `/api/separate` |
 | POST | `/api/build/{job_id}` | Step 2: 저장된 분석 → 리드시트 `full.musicxml` 조립 |
 | GET | `/api/jobs/{job_id}` | job 아티팩트 상태(upload/stems/analysis/musicxml) |
 | GET | `/api/analysis/{job_id}` | 저장된 분석 JSON |
@@ -95,7 +97,7 @@ uvicorn app.main:app --reload
 
 ```bash
 cd backend
-pytest -q          # 54 passed
+pytest -q          # 67 passed
 ruff check .
 ```
 
@@ -110,7 +112,7 @@ cd frontend && npm install && npm run dev   # http://localhost:5173
 # 백엔드(uvicorn app.main:app)를 먼저 기동
 ```
 
-- 업로드 패널 3탭(단일음원 / 분리Stem 다중 / 악보이미지) → 모드별 파이프라인 자동 실행
+- 업로드 패널 4탭(단일음원 / YouTube URL / 분리Stem 다중 / 악보이미지) → 모드별 파이프라인 자동 실행
 - OSMD SVG 렌더링 + 메타헤더(Key/BPM/TimeSig/Measures)
 - Tone.js PolySynth 재생: play/pause/seek, tempo 0.4~2× 슬라이더, OSMD 커서 lockstep 동기화
 

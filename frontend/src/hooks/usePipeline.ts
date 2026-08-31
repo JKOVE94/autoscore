@@ -132,6 +132,43 @@ export function usePipeline() {
     [run, patch],
   );
 
+  const runUrl = useCallback(
+    (url: string) => {
+      let jobId = "";
+      void run([
+        {
+          key: "upload",
+          label: "URL에서 오디오 추출 (yt-dlp)",
+          fn: () => api.uploadUrl(url),
+          onResult: (r) => {
+            jobId = (r as { job_id: string }).job_id;
+            patch({ jobId });
+          },
+        },
+        { key: "separate", label: "Stem 분리 (Stemdeck)", fn: () => api.separate(jobId) },
+        {
+          key: "analyze",
+          label: "오디오 분석",
+          fn: () => api.analyze(jobId),
+          onResult: (r) => patch({ analysis: r as AnalysisResponse }),
+        },
+        {
+          key: "build",
+          label: "MusicXML 생성",
+          fn: () => api.build(jobId),
+          onResult: (r) => patch({ build: r as BuildResponse }),
+        },
+        {
+          key: "render",
+          label: "악보 로드",
+          fn: () => api.scoreXml(jobId),
+          onResult: (r) => patch({ xml: r as string }),
+        },
+      ]);
+    },
+    [run, patch],
+  );
+
   const runStems = useCallback(
     (files: File[]) => {
       let jobId = "";
@@ -262,6 +299,7 @@ export function usePipeline() {
     ...state,
     activeXml,
     runSingle,
+    runUrl,
     runStems,
     runImage,
     reset,

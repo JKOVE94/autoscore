@@ -31,7 +31,7 @@ src/
 ├── hooks/usePipeline.ts     모드별 스텝 체인 실행 + 진행 상태
 ├── audio/player.ts          ScorePlayer — Tone.PolySynth + OSMD 커서 lockstep
 └── components/
-    ├── UploadPanel.tsx       3탭: 단일음원 / 분리Stem(다중) / 악보이미지
+    ├── UploadPanel.tsx       4탭: 단일음원 / YouTube URL / 분리Stem(다중) / 악보이미지
     ├── MetaHeader.tsx        Key · BPM · TimeSig · Measures · backends
     ├── ScoreView.tsx         OpenSheetMusicDisplay 래퍼
     ├── PlayerBar.tsx         재생/정지 · seek · tempo(0.4~2×) 슬라이더
@@ -44,10 +44,11 @@ src/
 | 모드 | 스텝 |
 |---|---|
 | ① 단일 음원 | `upload` → `separate`(Stemdeck) → `analyze` → `build` → `score` |
-| ② 분리 Stem | `upload-stems` → `analyze` → `build` → `score` |
-| ③ 악보 이미지 | `upload` → `omr`(Audiveris) → `score` |
+| ② YouTube URL | `upload-url`(yt-dlp) → `separate` → `analyze` → `build` → `score` |
+| ③ 분리 Stem | `upload-stems` → `analyze` → `build` → `score` |
+| ④ 악보 이미지 | `upload` → `omr`(Audiveris) → `score` |
 
 빌드 후: `regenerate-measure`(마디 검수) · `compress`(축약 리드시트) 는 수동 트리거.
 
 데모 stem: `cd backend && python -m scripts.make_demo_stems <dir>` 로 4개 WAV 생성 후
-② 탭에 드롭.
+③ 분리 Stem 탭에 드롭.

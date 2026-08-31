@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, UploadFile
+from pydantic import BaseModel
 
 from app.config import Settings, get_settings
 from app.core.exceptions import UnsupportedMediaError
@@ -15,7 +16,7 @@ from app.schemas.jobs import (
     StemSplitResult,
     UploadResponse,
 )
-from app.services import omr_engine, stem_splitter
+from app.services import omr_engine, stem_splitter, youtube
 
 router = APIRouter(prefix="/api", tags=["ingest"])
 
@@ -39,6 +40,33 @@ async def upload(
         kind=kind,
         stored_files=[str(stored)],
         message=f"Stored {stored.name}. Next: POST /api/{next_step}/{job_id}.",
+    )
+
+
+class UrlIngestRequest(BaseModel):
+    url: str
+
+
+@router.post("/upload-url", response_model=UploadResponse)
+def upload_url(
+    body: UrlIngestRequest,
+    settings: Settings = Depends(get_settings),
+) -> UploadResponse:
+    """Input mode 1 (URL): download audio from a video URL via yt-dlp."""
+    job_id = new_job_id()
+    dest_dir = settings.uploads_path / job_id
+    result = youtube.fetch_audio(body.url, dest_dir, settings=settings)
+
+    dur = f"{result.duration_sec:.0f}s" if result.duration_sec else "unknown length"
+    return UploadResponse(
+        job_id=job_id,
+        mode=InputMode.SINGLE_AUDIO,
+        kind="audio",
+        stored_files=[str(result.path)],
+        message=(
+            f"Fetched “{result.title or result.video_id}” ({dur}). "
+            f"Next: POST /api/separate/{job_id}."
+        ),
     )
 
 

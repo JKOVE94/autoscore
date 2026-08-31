@@ -147,6 +147,19 @@
   송폼 표시(MetaHeader에도), MusicXML 다운로드(Blob). 축약 뷰에선 재생기 숨김.
 - 재생 시 regen 하면 축약 결과 무효화(`compressed=null`).
 
+## 추가 기능 — YouTube/URL 오디오 입력 (완료)
+
+- `app/services/youtube.py` : `yt-dlp` + `ffmpeg` 로 URL → `source.wav` 추출.
+  - `validate_url()` : http(s) 만, 호스트 allowlist(`YOUTUBE_ALLOWED_HOSTS`, 기본 youtube 계열).
+  - `fetch_audio()` : `bestaudio` → `FFmpegExtractAudio(wav)`, `noplaylist`,
+    `YOUTUBE_MAX_DURATION_SEC`(기본 900s) 초과 거부, 중간 파일 정리.
+  - `_run_ytdlp()` 분리(테스트에서 mock). `engine_available()` → health/check_engines 표시.
+- `POST /api/upload-url {url}` → mode 1 job 생성 → 이후 `/api/separate` 부터 동일 체인.
+- 프론트 `UploadPanel` : "② YouTube" 탭(URL 입력) → `usePipeline.runUrl()`.
+- `requirements.txt` : `yt-dlp`(unpinned — YouTube 변경 대응). ffmpeg는 시스템 설치.
+- 8 테스트(URL 검증 / mock 추출 / 라우트 / health). 총 67 pytest.
+- ⚠️ 실제 YouTube 다운로드는 미실행(mock 테스트만). 링크 저작권/ToS는 이용자 책임.
+
 ## 후속 검증 항목 (기능 구현 완료, 환경 제약으로 미실행)
 
 1. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·품질 비교.

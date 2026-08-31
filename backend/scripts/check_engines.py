@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 
 from app.config import get_settings
-from app.services import omr_engine, stem_splitter
+from app.services import omr_engine, stem_splitter, youtube
 
 
 def main() -> int:
@@ -36,6 +36,13 @@ def main() -> int:
     if not omr_ok:
         ok = False
         print("  ! set AUDIVERIS_BIN to the Audiveris launcher path")
+    print("-" * 60)
+
+    yt_ok, yt_version, ffmpeg_path = youtube.engine_available()
+    print(f"[yt-dlp]   installed   : {yt_ok} (version {yt_version})")
+    print(f"[yt-dlp]   ffmpeg      : {ffmpeg_path}")
+    if not (yt_ok and ffmpeg_path):
+        print("  ! pip install yt-dlp and install ffmpeg (brew install ffmpeg) for URL ingestion")
     print("-" * 60)
 
     try:

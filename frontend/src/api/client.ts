@@ -59,6 +59,13 @@ export const api = {
     return request<UploadResponse>("/api/upload-stems", { method: "POST", body: form });
   },
 
+  uploadUrl(url: string): Promise<UploadResponse> {
+    return request<UploadResponse>("/api/upload-url", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    });
+  },
+
   separate(jobId: string): Promise<StemSplitResult> {
     return request<StemSplitResult>(`/api/separate/${jobId}`, { method: "POST" });
   },

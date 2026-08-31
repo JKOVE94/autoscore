@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 
 from app.config import Settings, get_settings
 from app.schemas.jobs import EngineStatus, HealthResponse
-from app.services import omr_engine, stem_splitter
+from app.services import omr_engine, stem_splitter, youtube
 
 router = APIRouter(tags=["health"])
 
@@ -28,7 +28,20 @@ def _engine_statuses(settings: Settings) -> list[EngineStatus]:
         version=omr_engine.probe_version(settings),
         detail=None if omr_ok else "Set AUDIVERIS_BIN to the launcher path",
     )
-    return [stem_status, omr_status]
+
+    yt_ok, yt_version, ffmpeg_path = youtube.engine_available()
+    yt_status = EngineStatus(
+        name="yt-dlp",
+        configured=yt_ok and ffmpeg_path is not None,
+        executable=ffmpeg_path,
+        version=yt_version,
+        detail=(
+            None
+            if yt_ok and ffmpeg_path
+            else "pip install yt-dlp and install ffmpeg (brew install ffmpeg)"
+        ),
+    )
+    return [stem_status, omr_status, yt_status]
 
 
 @router.get("/health", response_model=HealthResponse)
