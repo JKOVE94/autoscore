@@ -2,6 +2,7 @@ import type {
   AnalysisResponse,
   BackendStatus,
   BuildResponse,
+  CompressResponse,
   JobStatus,
   MeasureWindow,
   OMRResult,
@@ -90,6 +91,10 @@ export const api = {
 
   listMeasures(jobId: string): Promise<MeasureWindow[]> {
     return request<MeasureWindow[]>(`/api/measures/${jobId}`);
+  },
+
+  compress(jobId: string): Promise<CompressResponse> {
+    return request<CompressResponse>(`/api/compress/${jobId}`, { method: "POST" });
   },
 
   regenerateMeasure(

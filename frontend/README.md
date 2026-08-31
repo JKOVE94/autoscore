@@ -35,7 +35,8 @@ src/
     ├── MetaHeader.tsx        Key · BPM · TimeSig · Measures · backends
     ├── ScoreView.tsx         OpenSheetMusicDisplay 래퍼
     ├── PlayerBar.tsx         재생/정지 · seek · tempo(0.4~2×) 슬라이더
-    └── MeasureInspector.tsx  마디 다중선택 + 감도/양자화 → 부분 재분석 (Step 4)
+    ├── MeasureInspector.tsx  마디 다중선택 + 감도/양자화 → 부분 재분석 (Step 4)
+    └── FormCompressor.tsx    축약 리드시트 생성 · 전체/축약 토글 · 다운로드 (Step 5)
 ```
 
 ## 파이프라인 (모드별)
@@ -45,6 +46,8 @@ src/
 | ① 단일 음원 | `upload` → `separate`(Stemdeck) → `analyze` → `build` → `score` |
 | ② 분리 Stem | `upload-stems` → `analyze` → `build` → `score` |
 | ③ 악보 이미지 | `upload` → `omr`(Audiveris) → `score` |
+
+빌드 후: `regenerate-measure`(마디 검수) · `compress`(축약 리드시트) 는 수동 트리거.
 
 데모 stem: `cd backend && python -m scripts.make_demo_stems <dir>` 로 4개 WAV 생성 후
 ② 탭에 드롭.

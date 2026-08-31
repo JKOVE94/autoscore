@@ -3,7 +3,7 @@
 - **목적**: 오디오/Stem/악보이미지 → MusicXML 생성 → 웹 GUI 시각화·재생·검수 → 반복기호 기반 축약형 리드 시트 변환 엔드투엔드 파이프라인 구축
 - **작성일**: 2026-08-31
 - **작성자**: Claude Code (총괄 PM & 아키텍트)
-- **상태**: 🔄 진행 중 — Step 1~4 완료 (파이프라인 + GUI + 마디 검수), Step 5(리드시트 축약) 대기
+- **상태**: ✅ Step 1~5 전 단계 구현 완료 (엔드투엔드 파이프라인 + 웹 GUI). 프리미엄 백엔드 설치·브라우저 E2E는 후속 검증 항목.
 - **타깃 환경**: Apple Silicon (M1 Pro, macOS), 로컬 구동
 
 ---
@@ -47,7 +47,7 @@
 | 9 | Step 3 | Tone.js 재생기 + OSMD 커서 동기화 | `frontend/src/audio/player.ts`, `components/PlayerBar.tsx` | ✅ | PolySynth + AudioContext 클럭, tempo 슬라이더, seek, 커서 lockstep |
 | 7b | Step 3 | 백엔드 아티팩트 서빙 | `backend/app/api/routes/jobs.py`, `upload-stems` | ✅ | `/api/score`·`/api/analysis`·`/api/jobs/{id}`, 다중 stem 업로드, OMR→full.musicxml 복사 |
 | 10 | Step 4 | 마디 단위 검수 + 부분 재생성 | `backend/app/services/audio_analyzer/regen.py`, `api/routes/regenerate.py`, `frontend/.../MeasureInspector.tsx` | ✅ | 글로벌 비트그리드 유지, 윈도우만 melody+harmony 재추출 → merge → 재빌드. 6 테스트 |
-| 11 | Step 5 | 송 폼 분석 + 축약 엔진 (Form Compressor) | `backend/app/services/form_compressor.py` | 📋 | 미착수 (다음 작업) |
+| 11 | Step 5 | 송 폼 분석 + 축약 엔진 (Form Compressor) | `backend/app/services/form_compressor.py`, `api/routes/compress.py`, `frontend/.../FormCompressor.tsx` | ✅ | music21 RepeatFinder(도돌이표/볼타) + D.S. al Coda 폴백 + 송폼 문자열. `POST /api/compress`, `GET /api/lead-sheet`. 6 테스트 |
 
 상태 범례: 📋 대기 · 🔄 진행중 · 🚧 블록 · ✅ 완료
 
@@ -131,9 +131,25 @@
   재분석 후 `osmd.load(musicxml)` 리렌더, analysis 재fetch.
 - `discover_stems` 를 `audio_analyzer/stems.py` 로 분리(analyze 라우트와 공유).
 
-## 다음 액션
+## Step 5 Form Compressor 설계 메모 (완료)
 
-1. **Step 5 — Form Compressor** (`form_compressor.py`): 마디별 코드/멜로디 유사도 →
-   반복 섹션 감지 → 도돌이표/1·2절 볼타/D.S. al Coda 삽입 → 축약 리드시트 출력.
-2. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·검증.
-3. 브라우저 E2E 확인(크롬 확장 연결 후). 마디 클릭 선택(SVG hit-test) 고도화.
+- `compress_musicxml(src, out, analysis=)`:
+  - `music21.repeat.RepeatFinder.simplify()` — 인접 반복 → 도돌이표(`:|`), 끝부분
+    변주 → 1·2절 볼타(RepeatBracket). 대부분의 축약을 여기서 처리.
+  - `_apply_dal_segno()` — RepeatFinder가 못 접는 **비인접 반복**(len≥3) 폴백:
+    Segno + To Coda + `D.S. al Coda`(코다 tail 있으면) / `D.S. al Fine`(없으면),
+    반복 마디 삭제·재번호. (단독 호출 시 검증됨; 실사용은 RepeatFinder가 먼저 처리)
+  - `_song_form(analysis)` — 마디별 (코드시퀀스, 피치클래스셋) 지문 → A/B/C 라벨 →
+    런 축약 `"A B C D×2 ..."` 문자열.
+- API: `POST /api/compress/{id}` → `lead_sheet.musicxml` + 리포트(ops, song_form),
+  `GET /api/lead-sheet/{id}` 다운로드.
+- 프론트 `FormCompressor`: "축약 리드 시트 생성" → 전체/축약 토글, ops 리스트,
+  송폼 표시(MetaHeader에도), MusicXML 다운로드(Blob). 축약 뷰에선 재생기 숨김.
+- 재생 시 regen 하면 축약 결과 무효화(`compressed=null`).
+
+## 후속 검증 항목 (기능 구현 완료, 환경 제약으로 미실행)
+
+1. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·품질 비교.
+2. 브라우저 E2E (크롬 확장 연결 후) — OSMD 렌더/커서/재생/축약뷰 시각 확인.
+3. 마디 클릭 선택(OSMD SVG hit-test) 고도화 — 현재는 번호 칩 선택.
+4. D.S. al Coda 를 RepeatFinder 앞단에서 우선 적용하는 옵션(후렴 반복 가독성).

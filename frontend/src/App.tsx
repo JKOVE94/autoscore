@@ -2,6 +2,7 @@ import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api/client";
 import { ScorePlayer } from "./audio/player";
+import { FormCompressor } from "./components/FormCompressor";
 import { MeasureInspector } from "./components/MeasureInspector";
 import { MetaHeader } from "./components/MetaHeader";
 import { PlayerBar } from "./components/PlayerBar";
@@ -31,14 +32,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!osmd || !pipe.analysis) {
+    if (!osmd || !pipe.analysis || pipe.view === "lead") {
       setPlayer(null);
       return;
     }
     const p = new ScorePlayer(osmd, pipe.analysis);
     setPlayer(p);
     return () => p.dispose();
-  }, [osmd, pipe.analysis]);
+  }, [osmd, pipe.analysis, pipe.view]);
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -102,6 +103,17 @@ export default function App() {
             />
           )}
 
+          {pipe.build && pipe.jobId && (
+            <FormCompressor
+              jobId={pipe.jobId}
+              compressed={pipe.compressed}
+              busy={pipe.compressBusy}
+              view={pipe.view}
+              onCompress={pipe.compress}
+              onView={pipe.setView}
+            />
+          )}
+
           {pipe.build && pipe.build.warnings.length > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
               <p className="mb-1 font-semibold">빌드 경고</p>
@@ -115,14 +127,23 @@ export default function App() {
         </div>
 
         <div className="space-y-4">
-          <MetaHeader analysis={pipe.analysis} build={pipe.build} />
-          {player && <PlayerBar player={player} />}
+          <MetaHeader
+            analysis={pipe.analysis}
+            build={pipe.build}
+            songForm={pipe.compressed?.song_form ?? null}
+          />
+          {player && pipe.view === "full" && <PlayerBar player={player} />}
+          {pipe.view === "lead" && (
+            <p className="rounded bg-slate-100 p-2 text-xs text-slate-500">
+              축약 리드 시트 보기 — 재생은 전체 악보에서 가능합니다.
+            </p>
+          )}
           {renderError && (
             <p className="rounded bg-rose-50 p-2 text-xs text-rose-700">
               악보 렌더 오류: {renderError}
             </p>
           )}
-          <ScoreView xml={pipe.xml} onReady={handleReady} onError={setRenderError} />
+          <ScoreView xml={pipe.activeXml} onReady={handleReady} onError={setRenderError} />
         </div>
       </div>
     </div>

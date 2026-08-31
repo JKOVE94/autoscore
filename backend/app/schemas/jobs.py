@@ -91,6 +91,16 @@ class RegenerateRequest(BaseModel):
     quantize_division: int | None = Field(default=None)
 
 
+class CompressResponse(BaseModel):
+    job_id: str
+    musicxml_path: str
+    musicxml: str
+    original_measures: int
+    compressed_measures: int
+    operations: list[str] = Field(default_factory=list)
+    song_form: str | None = None
+
+
 class RegenerateResponse(BaseModel):
     job_id: str
     changed_measures: list[int]

@@ -92,6 +92,16 @@ export interface RegenerateResponse {
   warnings: string[];
 }
 
+export interface CompressResponse {
+  job_id: string;
+  musicxml_path: string;
+  musicxml: string;
+  original_measures: number;
+  compressed_measures: number;
+  operations: string[];
+  song_form: string | null;
+}
+
 export interface JobStatus {
   job_id: string;
   has_upload: boolean;

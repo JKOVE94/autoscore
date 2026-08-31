@@ -88,12 +88,14 @@ uvicorn app.main:app --reload
 | GET | `/api/score/{job_id}` | 생성된 `full.musicxml` 다운로드 |
 | GET | `/api/measures/{job_id}` | Step 4: 마디별 시간 구간 목록 |
 | POST | `/api/regenerate-measure/{job_id}` | Step 4: 선택 마디만 재분석 → 악보 패치 |
+| POST | `/api/compress/{job_id}` | Step 5: 반복 감지 → 도돌이표/볼타/D.S. 축약 리드시트 |
+| GET | `/api/lead-sheet/{job_id}` | Step 5: 축약 `lead_sheet.musicxml` 다운로드 |
 
 ### 5. 테스트 & 린트
 
 ```bash
 cd backend
-pytest -q          # 48 passed
+pytest -q          # 54 passed
 ruff check .
 ```
 
@@ -155,9 +157,22 @@ build_musicxml(analysis, "storage/outputs/<job>/full.musicxml", title="...")
 재분석하면, 글로벌 비트 그리드는 유지한 채 해당 구간의 멜로디·화성만 다시 추출하여
 악보를 패치합니다 (`audio_analyzer/regen.py` → `analyze_window` / `merge_window`).
 
-## 다음 단계
+## Step 5 — 리드 시트 축약 & 송 폼 (완료)
 
-- **Step 5**: 송 폼 분석 + 리드시트 축약 엔진 (반복/볼타/D.S.)
+`FormCompressor`에서 "축약 리드 시트 생성"을 누르면 반복 구간을 감지해 축약합니다
+(`form_compressor.py`):
+
+- **도돌이표 · 1·2절 볼타** — music21 `RepeatFinder.simplify()`
+- **D.S. al Coda / al Fine** — RepeatFinder가 못 접는 비인접 반복에 Segno/Coda/D.S. 삽입
+- **송 폼 문자열** — 마디별 코드·음정 지문으로 `A B C D×2 …` 라벨
+
+전체/축약 뷰 토글, 축약 MusicXML 다운로드 지원.
+
+## 후속 검증
+
+기능은 전 단계 구현 완료. 환경 제약으로 아래는 미실행:
+- 프리미엄 분석 백엔드(basic-pitch/essentia/madmom) 실제 설치·비교
+- 브라우저 E2E (크롬 확장 연결 후 OSMD 렌더/재생/축약뷰 확인)
 - **Step 4**: 마디 단위 검수 & `/api/regenerate-measure`
 - **Step 5**: 송 폼 분석 + 리드 시트 축약 엔진
 

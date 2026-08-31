@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { ApiRequestError, api } from "../api/client";
-import type { AnalysisResponse, BuildResponse } from "../types";
+import type { AnalysisResponse, BuildResponse, CompressResponse } from "../types";
 
 export type Phase = "idle" | "running" | "ready" | "error";
 export type StepStatus = "run" | "ok" | "fail" | "skip";
@@ -22,6 +22,9 @@ interface PipelineState {
   error: string | null;
   regenBusy: boolean;
   regenNotice: string | null;
+  compressed: CompressResponse | null;
+  compressBusy: boolean;
+  view: "full" | "lead";
 }
 
 const INITIAL: PipelineState = {
@@ -34,6 +37,9 @@ const INITIAL: PipelineState = {
   error: null,
   regenBusy: false,
   regenNotice: null,
+  compressed: null,
+  compressBusy: false,
+  view: "full",
 };
 
 export function usePipeline() {
@@ -214,6 +220,8 @@ export function usePipeline() {
             : s.build,
           regenBusy: false,
           regenNotice: `마디 ${res.changed_measures.join(", ")} 재분석 완료`,
+          compressed: null, // lead sheet is now stale
+          view: "full",
         }));
       } catch (err) {
         const msg =
@@ -228,5 +236,37 @@ export function usePipeline() {
     [state.jobId, state.regenBusy, patch],
   );
 
-  return { ...state, runSingle, runStems, runImage, reset, regenerate };
+  const compress = useCallback(async () => {
+    if (!state.jobId || state.compressBusy) return;
+    patch({ compressBusy: true, error: null });
+    try {
+      const res = await api.compress(state.jobId);
+      patch({ compressed: res, compressBusy: false, view: "lead" });
+    } catch (err) {
+      const msg =
+        err instanceof ApiRequestError
+          ? `${err.code}: ${err.message}`
+          : err instanceof Error
+            ? err.message
+            : "compression failed";
+      patch({ compressBusy: false, error: msg });
+    }
+  }, [state.jobId, state.compressBusy, patch]);
+
+  const setView = useCallback((view: "full" | "lead") => patch({ view }), [patch]);
+
+  const activeXml =
+    state.view === "lead" && state.compressed ? state.compressed.musicxml : state.xml;
+
+  return {
+    ...state,
+    activeXml,
+    runSingle,
+    runStems,
+    runImage,
+    reset,
+    regenerate,
+    compress,
+    setView,
+  };
 }
