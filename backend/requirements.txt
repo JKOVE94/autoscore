@@ -1,0 +1,26 @@
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# --- Music / notation ---
+music21==9.3.0
+
+# --- Audio analysis (Step 2) ---
+# NOTE: the whole backend targets Python 3.11 — basic-pitch / madmom / essentia
+#       have no 3.14 wheels. Create the venv at backend/.venv with python3.11.
+basic-pitch==0.4.0
+librosa==0.10.2.post1
+numpy==1.26.4
+soundfile==0.12.1
+madmom==0.16.1
+# essentia is installed separately on Apple Silicon:
+#   pip install essentia   (or build essentia-tensorflow from source)
+
+# --- Dev / test ---
+pytest==8.3.4
+pytest-asyncio==0.25.2
+httpx==0.28.1
+ruff==0.9.2

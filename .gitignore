@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env
+.env
+.env.local
+
+# Backend runtime storage
+backend/storage/uploads/*
+backend/storage/stems/*
+backend/storage/outputs/*
+!backend/storage/**/.gitkeep
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Audiveris / Java tmp
+*.log
