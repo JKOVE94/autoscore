@@ -1,14 +1,19 @@
 name: docker-publish
 
 # Builds the backend + frontend images for linux/amd64 and linux/arm64 and
-# pushes multi-arch manifests to GitHub Container Registry (ghcr.io).
+# pushes multi-arch manifests to GitHub Container Registry (ghcr.io), and — when
+# configured — also to Docker Hub (so they show up in Docker Desktop search).
 #
 #   push to main        -> :latest, :main, :sha-<short>
 #   tag v1.2.3          -> :1.2.3, :1.2, :latest
 #   manual (dispatch)   -> same as the branch it runs on
 #
+# Docker Hub (optional): add repo Variable DOCKERHUB_USERNAME and repo Secret
+# DOCKERHUB_TOKEN (Settings > Secrets and variables > Actions). Without them the
+# workflow just publishes to GHCR.
+#
 # Pull:  docker pull ghcr.io/jkove94/autoscore-backend:latest
-#        docker pull ghcr.io/jkove94/autoscore-frontend:latest
+#        docker pull <dockerhub-user>/autoscore-backend:latest   # if Hub is configured
 
 on:
   push:
@@ -88,9 +93,21 @@ jobs:
     strategy:
       matrix:
         image: [backend, frontend]
+    env:
+      # optional: set repo variable DOCKERHUB_USERNAME + secret DOCKERHUB_TOKEN
+      # to also publish to Docker Hub (so the images are searchable in Docker Desktop)
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
     steps:
       - name: Prepare
-        run: echo "REGISTRY_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.image }}" >> "$GITHUB_ENV"
+        run: |
+          ghcr="ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.image }}"
+          echo "GHCR_IMAGE=$ghcr" >> "$GITHUB_ENV"
+          {
+            echo 'IMAGES<<EOF'
+            echo "$ghcr"
+            [ -n "$DOCKERHUB_USERNAME" ] && echo "docker.io/${DOCKERHUB_USERNAME}/autoscore-${{ matrix.image }}"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
 
       - uses: actions/download-artifact@v4
         with:
@@ -104,7 +121,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          images: ${{ env.IMAGES }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -119,12 +136,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create and push manifest list
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and push manifest list(s)
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+            $(printf "${GHCR_IMAGE}@sha256:%s " *)
 
       - name: Inspect
-        run: docker buildx imagetools inspect "${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}"
+        run: docker buildx imagetools inspect "${GHCR_IMAGE}:${{ steps.meta.outputs.version }}"

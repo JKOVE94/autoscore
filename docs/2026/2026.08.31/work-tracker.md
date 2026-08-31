@@ -195,6 +195,10 @@
   (`ghcr.io/jkove94/autoscore-{backend,frontend}`, `provenance:false`, gha 캐시).
   `docker-compose.yml` 에 `image:` 추가 → `docker compose pull` 가능.
   `.dockerignore` 에 `.env`/`.github` 추가. **최초 발행 후 Packages 를 Public 전환 필요.**
+- Docker Hub 동시 발행(선택): merge job이 repo Variable `DOCKERHUB_USERNAME` +
+  Secret `DOCKERHUB_TOKEN` 있으면 `docker.io/<user>/autoscore-{backend,frontend}` 에도
+  `imagetools create` 로 태그 발행(GHCR 다이제스트 소스 → 크로스 레지스트리 복사).
+  미설정 시 GHCR 만(기존 동작). Docker Desktop 검색은 Hub 전용이라 이게 있어야 검색됨.
 
 ## 후속 검증 항목 (기능 구현 완료, 환경 제약으로 미실행)
 

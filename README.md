@@ -82,6 +82,20 @@ docker run -p 5173:5173 -e VITE_API_TARGET=http://host.docker.internal:8000 \
 
 > 최초 발행 후 GitHub → Packages 에서 각 패키지를 **Public** 으로 전환하고 repo에 연결하세요.
 
+#### Docker Hub 에도 발행 (Docker Desktop 검색용)
+
+Docker Desktop 검색창은 Docker Hub만 뒤지므로, Hub에도 올리려면:
+
+1. hub.docker.com 에서 repo 생성: `autoscore-backend`, `autoscore-frontend`
+2. **Account settings → Personal access tokens** 에서 토큰 발급
+3. GitHub repo → **Settings → Secrets and variables → Actions**:
+   - Variables 탭: `DOCKERHUB_USERNAME` = Docker Hub 사용자명
+   - Secrets 탭: `DOCKERHUB_TOKEN` = 발급한 토큰
+4. 다음 `main` push(또는 Actions 탭에서 `docker-publish` 수동 실행)부터 GHCR + Docker Hub 양쪽 발행
+
+이후 Docker Desktop 검색창에 `<사용자명>/autoscore-backend` 로 검색되고, `Pull` → `Run` 으로
+관리할 수 있습니다. (변수 미설정 시 GHCR 만 발행 — 기존 동작 유지)
+
 > ⚠️ 컨테이너는 Linux 라서 **Apple Silicon 가속 경로가 없습니다** — Stemdeck(CoreML) 미동작,
 > torch 는 CPU(`TORCH_DEVICE=cpu`). librosa 폴백 분석은 정상 동작하며, 음원 분리는
 > `WITH_DEMUCS=1` 로 빌드해 CPU demucs 를 씁니다. CoreML 가속이 필요하면 로컬(`./run`)로 실행하세요.
