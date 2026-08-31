@@ -88,9 +88,9 @@ Docker Desktop 검색창은 Docker Hub만 뒤지므로, Hub에도 올리려면:
 
 1. hub.docker.com 에서 repo 생성: `autoscore-backend`, `autoscore-frontend`
 2. **Account settings → Personal access tokens** 에서 토큰 발급
-3. GitHub repo → **Settings → Secrets and variables → Actions**:
-   - Variables 탭: `DOCKERHUB_USERNAME` = Docker Hub 사용자명
-   - Secrets 탭: `DOCKERHUB_TOKEN` = 발급한 토큰
+3. GitHub repo → **Settings → Secrets and variables → Actions → Secrets** 탭에 둘 다 등록:
+   - `DOCKERHUB_USERNAME` = Docker Hub 사용자명
+   - `DOCKERHUB_TOKEN` = 발급한 토큰
 4. 다음 `main` push(또는 Actions 탭에서 `docker-publish` 수동 실행)부터 GHCR + Docker Hub 양쪽 발행
 
 이후 Docker Desktop 검색창에 `<사용자명>/autoscore-backend` 로 검색되고, `Pull` → `Run` 으로

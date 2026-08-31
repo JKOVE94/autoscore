@@ -8,8 +8,8 @@ name: docker-publish
 #   tag v1.2.3          -> :1.2.3, :1.2, :latest
 #   manual (dispatch)   -> same as the branch it runs on
 #
-# Docker Hub (optional): add repo Variable DOCKERHUB_USERNAME and repo Secret
-# DOCKERHUB_TOKEN (Settings > Secrets and variables > Actions). Without them the
+# Docker Hub (optional): add repo Secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN
+# (Settings > Secrets and variables > Actions > Secrets). Without them the
 # workflow just publishes to GHCR.
 #
 # Pull:  docker pull ghcr.io/jkove94/autoscore-backend:latest
@@ -94,9 +94,9 @@ jobs:
       matrix:
         image: [backend, frontend]
     env:
-      # optional: set repo variable DOCKERHUB_USERNAME + secret DOCKERHUB_TOKEN
-      # to also publish to Docker Hub (so the images are searchable in Docker Desktop)
-      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      # optional: set repo secrets DOCKERHUB_USERNAME + DOCKERHUB_TOKEN to also
+      # publish to Docker Hub (so the images are searchable in Docker Desktop)
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - name: Prepare
         run: |
