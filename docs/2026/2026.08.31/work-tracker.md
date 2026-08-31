@@ -3,7 +3,7 @@
 - **목적**: 오디오/Stem/악보이미지 → MusicXML 생성 → 웹 GUI 시각화·재생·검수 → 반복기호 기반 축약형 리드 시트 변환 엔드투엔드 파이프라인 구축
 - **작성일**: 2026-08-31
 - **작성자**: Claude Code (총괄 PM & 아키텍트)
-- **상태**: 🔄 진행 중 — Step 1·2 완료 (audio_analyzer + xml_builder), Step 3(프론트엔드) 대기
+- **상태**: 🔄 진행 중 — Step 1·2·3 완료 (백엔드 파이프라인 + 웹 GUI), Step 4(마디 검수) 대기
 - **타깃 환경**: Apple Silicon (M1 Pro, macOS), 로컬 구동
 
 ---
@@ -42,9 +42,10 @@
 | 4 | Step 1 | 외부 엔진 경로/설정 검증 CLI | `backend/scripts/check_engines.py` | ✅ | `python -m scripts.check_engines` |
 | 5 | Step 2 | 오디오 분석 (멜로디/리듬/화성) | `backend/app/services/audio_analyzer/` | ✅ | 패키지화. basic-pitch/essentia/madmom lazy + librosa 폴백. `/api/analyze/{job_id}`. 20 테스트 |
 | 6 | Step 2 | MusicXML 빌더 (music21 양자화/조립) | `backend/app/services/xml_builder.py` | ✅ | QuantGrid 양자화 + 리드시트(멜로디+코드심볼) 조립. `POST /api/build/{job_id}`. 9 테스트 |
-| 7 | Step 3 | 프론트엔드 (Vite + React + TS + Tailwind) | `frontend/` | 📋 | 디렉터리만 생성 |
-| 8 | Step 3 | OSMD 렌더링 컴포넌트 | `frontend/src/components/ScoreView.tsx` | 📋 | 미착수 |
-| 9 | Step 3 | Tone.js 재생기 + OSMD 커서 동기화 | `frontend/src/components/Player.tsx` | 📋 | 미착수 |
+| 7 | Step 3 | 프론트엔드 (Vite + React 18 + TS + Tailwind3) | `frontend/` | ✅ | tsc/vite build 통과. dev proxy `/api`→:8000 |
+| 8 | Step 3 | OSMD 렌더링 컴포넌트 | `frontend/src/components/ScoreView.tsx` | ✅ | MusicXML 문자열 → SVG, cursor.show |
+| 9 | Step 3 | Tone.js 재생기 + OSMD 커서 동기화 | `frontend/src/audio/player.ts`, `components/PlayerBar.tsx` | ✅ | PolySynth + AudioContext 클럭, tempo 슬라이더, seek, 커서 lockstep |
+| 7b | Step 3 | 백엔드 아티팩트 서빙 | `backend/app/api/routes/jobs.py`, `upload-stems` | ✅ | `/api/score`·`/api/analysis`·`/api/jobs/{id}`, 다중 stem 업로드, OMR→full.musicxml 복사 |
 | 10 | Step 4 | 마디 단위 검수 UI + `/api/regenerate-measure` | `backend/app/api/routes/regenerate.py` | 📋 | 미착수 |
 | 11 | Step 5 | 송 폼 분석 + 축약 엔진 (Form Compressor) | `backend/app/services/form_compressor.py` | 📋 | 미착수 |
 
@@ -97,9 +98,25 @@
 - 출력: `storage/outputs/{job_id}/full.musicxml`. `BuildResult`(마디/음표/rest/코드/드롭 수 + warnings).
 - 전체 체인: `upload → separate → analyze → build`.
 
+## Step 3 프론트엔드 설계 메모 (완료)
+
+- `frontend/` : Vite 6 + React 18 + TS(strict) + Tailwind 3. dev proxy `/api`→`http://127.0.0.1:8000`.
+- `UploadPanel` : 3탭(단일음원/분리Stem/악보이미지). Stem은 다중선택 → `/api/upload-stems`.
+- `usePipeline` 훅 : 모드별 스텝 체인 실행(upload→[separate|omr]→analyze→build→scoreXml),
+  각 스텝 상태(run/ok/fail) + 에러코드 표시.
+- `ScoreView` : `OpenSheetMusicDisplay`(SVG, autoResize, followCursor). `onReady(osmd)` 콜백.
+- `ScorePlayer`(`audio/player.ts`) : `Tone.PolySynth`를 AudioContext 클럭으로 스케줄.
+  `rate`(0.4~2×) 슬라이더, `seek`, OSMD `cursor.iterator.currentTimeStamp` 로 스텝 타임라인
+  계산 후 rAF 루프에서 `cursor.next()` lockstep. `PlayerBar` UI.
+- `MetaHeader` : Key / BPM / TimeSig / Duration / Measures / (Song Form=Step5 placeholder) / backends.
+- 백엔드 추가: `jobs.py`(`/api/score`,`/api/analysis`,`/api/jobs/{id}`), `/api/upload-stems`(다중),
+  OMR 결과를 `outputs/{id}/full.musicxml` 로도 복사.
+- 데모: `python -m scripts.make_demo_stems <dir>` → 4 stem WAV.
+- ⚠️ 브라우저 E2E 미실행(크롬 확장 미연결). tsc/vite build/42 pytest 는 통과.
+
 ## 다음 액션
 
-1. **Step 3 — 프론트엔드**: Vite+React+TS, 업로드 패널(모드1/2/3), 메타헤더,
-   `OpenSheetMusicDisplay` 렌더링, `Tone.js` 재생 + OSMD 커서 동기화.
+1. **Step 4 — 마디 검수**: `/api/regenerate-measure` (`analyze(window=)` + `xml_builder` 부분 →
+   기존 MusicXML `<measure>` 노드 패치). 프론트: OSMD 마디 클릭 선택 UI.
 2. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·검증.
-3. Step 4 마디 검수(`/api/regenerate-measure`) — `analyze(window=)` + `<measure>` 패치 재사용.
+3. 브라우저 E2E 확인(크롬 확장 연결 후).

@@ -26,7 +26,7 @@ autoscore/
 │   │   └── schemas/          Pydantic 모델
 │   ├── scripts/check_engines.py   외부 엔진 연동 검증 CLI
 │   └── tests/                pytest 단위 테스트
-├── frontend/                 React + Vite + TS (📋 Step 3)
+├── frontend/                 React + Vite + TS + Tailwind — 웹 GUI  ✅ Step 3
 └── docs/2026/2026.08.31/work-tracker.md   진행 추적 문서
 ```
 
@@ -81,15 +81,36 @@ uvicorn app.main:app --reload
 | POST | `/api/omr/{job_id}` | 입력모드 3: Audiveris OMR → MusicXML + music21 검증 |
 | POST | `/api/analyze/{job_id}` | Step 2: 분리된 stem에서 BPM/key/코드/멜로디 추출 (`{"window":[t0,t1]}` 옵션) |
 | GET | `/api/analyze/backends` | 분석 백엔드(basic-pitch/essentia/madmom/librosa) 가용성 |
+| POST | `/api/upload-stems` | 입력모드 2: 사전 분리 stem 여러 개를 한 job으로 업로드 |
 | POST | `/api/build/{job_id}` | Step 2: 저장된 분석 → 리드시트 `full.musicxml` 조립 |
+| GET | `/api/jobs/{job_id}` | job 아티팩트 상태(upload/stems/analysis/musicxml) |
+| GET | `/api/analysis/{job_id}` | 저장된 분석 JSON |
+| GET | `/api/score/{job_id}` | 생성된 `full.musicxml` 다운로드 |
 
 ### 5. 테스트 & 린트
 
 ```bash
 cd backend
-pytest -q          # 40 passed
+pytest -q          # 42 passed
 ruff check .
 ```
+
+---
+
+## Step 3 — 웹 GUI (frontend, 완료)
+
+Vite + React 18 + TS + Tailwind. 악보 `opensheetmusicdisplay`, 재생 `tone`.
+
+```bash
+cd frontend && npm install && npm run dev   # http://localhost:5173
+# 백엔드(uvicorn app.main:app)를 먼저 기동
+```
+
+- 업로드 패널 3탭(단일음원 / 분리Stem 다중 / 악보이미지) → 모드별 파이프라인 자동 실행
+- OSMD SVG 렌더링 + 메타헤더(Key/BPM/TimeSig/Measures)
+- Tone.js PolySynth 재생: play/pause/seek, tempo 0.4~2× 슬라이더, OSMD 커서 lockstep 동기화
+
+자세한 내용은 [`frontend/README.md`](frontend/README.md).
 
 ---
 
@@ -128,7 +149,6 @@ build_musicxml(analysis, "storage/outputs/<job>/full.musicxml", title="...")
 
 ## 다음 단계
 
-- **Step 3**: 프론트엔드 (업로드 · OSMD 렌더링 · Tone.js 재생 + 커서 동기화)
 - **Step 4**: 마디 검수 & `/api/regenerate-measure` (`analyze(window=)` 재사용)
 - **Step 5**: 송 폼 분석 + 리드시트 축약 엔진 (반복/볼타/D.S.)
 - **Step 4**: 마디 단위 검수 & `/api/regenerate-measure`

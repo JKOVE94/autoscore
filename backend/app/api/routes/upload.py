@@ -1,6 +1,9 @@
 """Upload + dispatch endpoints for the three input modes."""
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, UploadFile
 
 from app.config import Settings, get_settings
@@ -22,7 +25,7 @@ async def upload(
     file: UploadFile = File(...),
     settings: Settings = Depends(get_settings),
 ) -> UploadResponse:
-    """Store an upload and infer the input mode from its media kind."""
+    """Store a single upload and infer the input mode from its media kind."""
     kind = classify_extension(file.filename or "")
     job_id = new_job_id()
     dest_dir = settings.uploads_path / job_id
@@ -36,6 +39,31 @@ async def upload(
         kind=kind,
         stored_files=[str(stored)],
         message=f"Stored {stored.name}. Next: POST /api/{next_step}/{job_id}.",
+    )
+
+
+@router.post("/upload-stems", response_model=UploadResponse)
+async def upload_stems(
+    files: list[UploadFile] = File(...),
+    settings: Settings = Depends(get_settings),
+) -> UploadResponse:
+    """Input mode 2: store several pre-separated stem files under one job."""
+    if not files:
+        raise UnsupportedMediaError("No files supplied")
+    job_id = new_job_id()
+    dest_dir = settings.uploads_path / job_id
+    stored: list[str] = []
+    for f in files:
+        if classify_extension(f.filename or "") != "audio":
+            raise UnsupportedMediaError(f"{f.filename!r} is not an audio file")
+        stored.append(str(await save_upload(f, dest_dir, max_mb=settings.max_upload_mb)))
+
+    return UploadResponse(
+        job_id=job_id,
+        mode=InputMode.PRESPLIT_STEMS,
+        kind="audio",
+        stored_files=stored,
+        message=f"Stored {len(stored)} stem(s). Next: POST /api/analyze/{job_id}.",
     )
 
 
@@ -54,12 +82,20 @@ def omr(job_id: str, settings: Settings = Depends(get_settings)) -> OMRResult:
     src = _single_upload(job_id, settings)
     if classify_extension(src.name) != "image":
         raise UnsupportedMediaError("Job upload is not a score image")
-    return omr_engine.run_omr(src, job_id, settings=settings)
+    result = omr_engine.run_omr(src, job_id, settings=settings)
+
+    # Expose the OMR output under the same name the score/build flow uses so the
+    # frontend can render it via GET /api/score/{job_id}.
+    canonical = settings.outputs_path / Path(job_id).name / "full.musicxml"
+    try:
+        if Path(result.musicxml_path) != canonical:
+            shutil.copyfile(result.musicxml_path, canonical)
+    except OSError:
+        pass
+    return result
 
 
-def _single_upload(job_id: str, settings: Settings):
-    from pathlib import Path
-
+def _single_upload(job_id: str, settings: Settings) -> Path:
     job_dir = settings.uploads_path / Path(job_id).name
     files = [p for p in job_dir.glob("*") if p.is_file()] if job_dir.is_dir() else []
     if not files:
