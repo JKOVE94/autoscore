@@ -86,12 +86,14 @@ uvicorn app.main:app --reload
 | GET | `/api/jobs/{job_id}` | job 아티팩트 상태(upload/stems/analysis/musicxml) |
 | GET | `/api/analysis/{job_id}` | 저장된 분석 JSON |
 | GET | `/api/score/{job_id}` | 생성된 `full.musicxml` 다운로드 |
+| GET | `/api/measures/{job_id}` | Step 4: 마디별 시간 구간 목록 |
+| POST | `/api/regenerate-measure/{job_id}` | Step 4: 선택 마디만 재분석 → 악보 패치 |
 
 ### 5. 테스트 & 린트
 
 ```bash
 cd backend
-pytest -q          # 42 passed
+pytest -q          # 48 passed
 ruff check .
 ```
 
@@ -147,9 +149,14 @@ build_musicxml(analysis, "storage/outputs/<job>/full.musicxml", title="...")
 
 ---
 
+## Step 4 — 마디 검수 & 부분 재생성 (완료)
+
+`MeasureInspector`에서 오인식된 마디를 선택하고 피치 감도·양자화 단위를 조절해
+재분석하면, 글로벌 비트 그리드는 유지한 채 해당 구간의 멜로디·화성만 다시 추출하여
+악보를 패치합니다 (`audio_analyzer/regen.py` → `analyze_window` / `merge_window`).
+
 ## 다음 단계
 
-- **Step 4**: 마디 검수 & `/api/regenerate-measure` (`analyze(window=)` 재사용)
 - **Step 5**: 송 폼 분석 + 리드시트 축약 엔진 (반복/볼타/D.S.)
 - **Step 4**: 마디 단위 검수 & `/api/regenerate-measure`
 - **Step 5**: 송 폼 분석 + 리드 시트 축약 엔진

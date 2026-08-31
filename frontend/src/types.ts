@@ -75,6 +75,23 @@ export interface BuildResponse {
   warnings: string[];
 }
 
+export interface MeasureWindow {
+  number: number;
+  start_sec: number;
+  end_sec: number;
+}
+
+export interface RegenerateResponse {
+  job_id: string;
+  changed_measures: number[];
+  span_sec: [number, number];
+  measure_count: number;
+  note_count: number;
+  chord_symbol_count: number;
+  musicxml: string;
+  warnings: string[];
+}
+
 export interface JobStatus {
   job_id: string;
   has_upload: boolean;

@@ -79,6 +79,29 @@ class BuildResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class MeasureWindow(BaseModel):
+    number: int
+    start_sec: float
+    end_sec: float
+
+
+class RegenerateRequest(BaseModel):
+    measures: list[int] = Field(..., min_length=1)
+    pitch_sensitivity: float | None = Field(default=None, ge=0.0, le=1.0)
+    quantize_division: int | None = Field(default=None)
+
+
+class RegenerateResponse(BaseModel):
+    job_id: str
+    changed_measures: list[int]
+    span_sec: tuple[float, float]
+    measure_count: int
+    note_count: int
+    chord_symbol_count: int
+    musicxml: str
+    warnings: list[str] = Field(default_factory=list)
+
+
 class UploadResponse(BaseModel):
     job_id: str
     mode: InputMode

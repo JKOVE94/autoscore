@@ -13,6 +13,7 @@ this package is safe to import even in a minimal environment.
 """
 from __future__ import annotations
 
+from .stems import discover_stems
 from .types import AnalysisResult, BeatGrid, ChordEvent, NoteEvent
 
 __all__ = [
@@ -21,7 +22,12 @@ __all__ = [
     "ChordEvent",
     "NoteEvent",
     "analyze",
+    "analyze_window",
     "backend_status",
+    "discover_stems",
+    "measure_windows",
+    "merge_window",
+    "selected_span",
 ]
 
 
@@ -35,3 +41,27 @@ def backend_status() -> dict:
     from .backends import status
 
     return status()
+
+
+def analyze_window(*args, **kwargs):
+    from .regen import analyze_window as _fn
+
+    return _fn(*args, **kwargs)
+
+
+def measure_windows(*args, **kwargs):
+    from .regen import measure_windows as _fn
+
+    return _fn(*args, **kwargs)
+
+
+def merge_window(*args, **kwargs):
+    from .regen import merge_window as _fn
+
+    return _fn(*args, **kwargs)
+
+
+def selected_span(*args, **kwargs):
+    from .regen import selected_span as _fn
+
+    return _fn(*args, **kwargs)

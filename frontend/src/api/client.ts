@@ -3,7 +3,9 @@ import type {
   BackendStatus,
   BuildResponse,
   JobStatus,
+  MeasureWindow,
   OMRResult,
+  RegenerateResponse,
   StemSplitResult,
   UploadResponse,
 } from "../types";
@@ -80,6 +82,24 @@ export const api = {
 
   jobStatus(jobId: string): Promise<JobStatus> {
     return request<JobStatus>(`/api/jobs/${jobId}`);
+  },
+
+  analysisJson(jobId: string): Promise<AnalysisResponse> {
+    return request<AnalysisResponse>(`/api/analysis/${jobId}`);
+  },
+
+  listMeasures(jobId: string): Promise<MeasureWindow[]> {
+    return request<MeasureWindow[]>(`/api/measures/${jobId}`);
+  },
+
+  regenerateMeasure(
+    jobId: string,
+    opts: { measures: number[]; pitch_sensitivity?: number; quantize_division?: number },
+  ): Promise<RegenerateResponse> {
+    return request<RegenerateResponse>(`/api/regenerate-measure/${jobId}`, {
+      method: "POST",
+      body: JSON.stringify(opts),
+    });
   },
 
   backends(): Promise<BackendStatus> {

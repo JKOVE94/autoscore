@@ -20,6 +20,8 @@ interface PipelineState {
   build: BuildResponse | null;
   xml: string | null;
   error: string | null;
+  regenBusy: boolean;
+  regenNotice: string | null;
 }
 
 const INITIAL: PipelineState = {
@@ -30,6 +32,8 @@ const INITIAL: PipelineState = {
   build: null,
   xml: null,
   error: null,
+  regenBusy: false,
+  regenNotice: null,
 };
 
 export function usePipeline() {
@@ -183,5 +187,46 @@ export function usePipeline() {
     [run, patch],
   );
 
-  return { ...state, runSingle, runStems, runImage, reset };
+  const regenerate = useCallback(
+    async (opts: { measures: number[]; pitch_sensitivity?: number; quantize_division?: number }) => {
+      if (!state.jobId || state.regenBusy) return;
+      patch({ regenBusy: true, regenNotice: null, error: null });
+      try {
+        const res = await api.regenerateMeasure(state.jobId, opts);
+        let analysis: AnalysisResponse | null = null;
+        try {
+          analysis = await api.analysisJson(state.jobId);
+        } catch {
+          analysis = null;
+        }
+        setState((s) => ({
+          ...s,
+          xml: res.musicxml,
+          analysis: analysis ?? s.analysis,
+          build: s.build
+            ? {
+                ...s.build,
+                measure_count: res.measure_count,
+                note_count: res.note_count,
+                chord_symbol_count: res.chord_symbol_count,
+                warnings: res.warnings,
+              }
+            : s.build,
+          regenBusy: false,
+          regenNotice: `마디 ${res.changed_measures.join(", ")} 재분석 완료`,
+        }));
+      } catch (err) {
+        const msg =
+          err instanceof ApiRequestError
+            ? `${err.code}: ${err.message}`
+            : err instanceof Error
+              ? err.message
+              : "regeneration failed";
+        patch({ regenBusy: false, error: msg });
+      }
+    },
+    [state.jobId, state.regenBusy, patch],
+  );
+
+  return { ...state, runSingle, runStems, runImage, reset, regenerate };
 }

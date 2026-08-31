@@ -97,10 +97,12 @@ def build_musicxml(
     *,
     settings: Settings | None = None,
     title: str | None = None,
+    quantize_division: int | None = None,
 ) -> BuildResult:
     settings = settings or get_settings()
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    division = quantize_division or settings.quantize_division
 
     from music21 import (  # noqa: PLC0415
         clef,
@@ -124,7 +126,7 @@ def build_musicxml(
     grid = QuantGrid(
         analysis.beat_times,
         beat_unit=denominator,
-        division=settings.quantize_division,
+        division=division,
     )
     # Barlines are anchored to the first analysed beat and drawn every
     # ``numerator`` beats. We trust beat tracking more than the fallback

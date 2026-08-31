@@ -10,33 +10,15 @@ from pydantic import BaseModel
 
 from app.config import Settings, get_settings
 from app.core.exceptions import AudioAnalysisError
-from app.core.media import AUDIO_EXTS
 from app.schemas.jobs import AnalysisResponse
 from app.services.audio_analyzer import analyze as run_analysis
-from app.services.audio_analyzer import backend_status
+from app.services.audio_analyzer import backend_status, discover_stems
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 
 
 class AnalyzeRequest(BaseModel):
     window: tuple[float, float] | None = None
-
-
-def _discover_stems(job_id: str, settings: Settings) -> dict[str, Path]:
-    """Look for stems from the separate step, then fall back to pre-split uploads."""
-    stems: dict[str, Path] = {}
-    stem_dir = settings.stems_path / Path(job_id).name
-    upload_dir = settings.uploads_path / Path(job_id).name
-
-    for base in (stem_dir, upload_dir):
-        if not base.is_dir():
-            continue
-        for f in sorted(base.rglob("*")):
-            if f.is_file() and f.suffix.lower() in AUDIO_EXTS:
-                stems.setdefault(f.stem.lower(), f)
-        if stems:
-            break
-    return stems
 
 
 @router.get("/analyze/backends")
@@ -50,7 +32,7 @@ def analyze_job(
     body: AnalyzeRequest | None = None,
     settings: Settings = Depends(get_settings),
 ) -> AnalysisResponse:
-    stems = _discover_stems(job_id, settings)
+    stems = discover_stems(job_id, settings)
     if not stems:
         raise AudioAnalysisError(
             f"No stems found for job {job_id}. Run /api/separate first, "

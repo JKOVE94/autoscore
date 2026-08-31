@@ -31,10 +31,11 @@ src/
 ├── hooks/usePipeline.ts     모드별 스텝 체인 실행 + 진행 상태
 ├── audio/player.ts          ScorePlayer — Tone.PolySynth + OSMD 커서 lockstep
 └── components/
-    ├── UploadPanel.tsx      3탭: 단일음원 / 분리Stem(다중) / 악보이미지
-    ├── MetaHeader.tsx       Key · BPM · TimeSig · Measures · backends
-    ├── ScoreView.tsx        OpenSheetMusicDisplay 래퍼
-    └── PlayerBar.tsx        재생/정지 · seek · tempo(0.4~2×) 슬라이더
+    ├── UploadPanel.tsx       3탭: 단일음원 / 분리Stem(다중) / 악보이미지
+    ├── MetaHeader.tsx        Key · BPM · TimeSig · Measures · backends
+    ├── ScoreView.tsx         OpenSheetMusicDisplay 래퍼
+    ├── PlayerBar.tsx         재생/정지 · seek · tempo(0.4~2×) 슬라이더
+    └── MeasureInspector.tsx  마디 다중선택 + 감도/양자화 → 부분 재분석 (Step 4)
 ```
 
 ## 파이프라인 (모드별)

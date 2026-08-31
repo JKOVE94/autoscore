@@ -2,6 +2,7 @@ import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api/client";
 import { ScorePlayer } from "./audio/player";
+import { MeasureInspector } from "./components/MeasureInspector";
 import { MetaHeader } from "./components/MetaHeader";
 import { PlayerBar } from "./components/PlayerBar";
 import { ScoreView } from "./components/ScoreView";
@@ -90,6 +91,15 @@ export default function App() {
                 <p className="mt-2 rounded bg-rose-50 p-2 text-xs text-rose-700">{pipe.error}</p>
               )}
             </div>
+          )}
+
+          {pipe.build && pipe.jobId && (
+            <MeasureInspector
+              measureCount={pipe.build.measure_count}
+              busy={pipe.regenBusy}
+              notice={pipe.regenNotice}
+              onRegenerate={pipe.regenerate}
+            />
           )}
 
           {pipe.build && pipe.build.warnings.length > 0 && (

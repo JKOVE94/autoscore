@@ -3,7 +3,7 @@
 - **목적**: 오디오/Stem/악보이미지 → MusicXML 생성 → 웹 GUI 시각화·재생·검수 → 반복기호 기반 축약형 리드 시트 변환 엔드투엔드 파이프라인 구축
 - **작성일**: 2026-08-31
 - **작성자**: Claude Code (총괄 PM & 아키텍트)
-- **상태**: 🔄 진행 중 — Step 1·2·3 완료 (백엔드 파이프라인 + 웹 GUI), Step 4(마디 검수) 대기
+- **상태**: 🔄 진행 중 — Step 1~4 완료 (파이프라인 + GUI + 마디 검수), Step 5(리드시트 축약) 대기
 - **타깃 환경**: Apple Silicon (M1 Pro, macOS), 로컬 구동
 
 ---
@@ -46,8 +46,8 @@
 | 8 | Step 3 | OSMD 렌더링 컴포넌트 | `frontend/src/components/ScoreView.tsx` | ✅ | MusicXML 문자열 → SVG, cursor.show |
 | 9 | Step 3 | Tone.js 재생기 + OSMD 커서 동기화 | `frontend/src/audio/player.ts`, `components/PlayerBar.tsx` | ✅ | PolySynth + AudioContext 클럭, tempo 슬라이더, seek, 커서 lockstep |
 | 7b | Step 3 | 백엔드 아티팩트 서빙 | `backend/app/api/routes/jobs.py`, `upload-stems` | ✅ | `/api/score`·`/api/analysis`·`/api/jobs/{id}`, 다중 stem 업로드, OMR→full.musicxml 복사 |
-| 10 | Step 4 | 마디 단위 검수 UI + `/api/regenerate-measure` | `backend/app/api/routes/regenerate.py` | 📋 | 미착수 |
-| 11 | Step 5 | 송 폼 분석 + 축약 엔진 (Form Compressor) | `backend/app/services/form_compressor.py` | 📋 | 미착수 |
+| 10 | Step 4 | 마디 단위 검수 + 부분 재생성 | `backend/app/services/audio_analyzer/regen.py`, `api/routes/regenerate.py`, `frontend/.../MeasureInspector.tsx` | ✅ | 글로벌 비트그리드 유지, 윈도우만 melody+harmony 재추출 → merge → 재빌드. 6 테스트 |
+| 11 | Step 5 | 송 폼 분석 + 축약 엔진 (Form Compressor) | `backend/app/services/form_compressor.py` | 📋 | 미착수 (다음 작업) |
 
 상태 범례: 📋 대기 · 🔄 진행중 · 🚧 블록 · ✅ 완료
 
@@ -114,9 +114,26 @@
 - 데모: `python -m scripts.make_demo_stems <dir>` → 4 stem WAV.
 - ⚠️ 브라우저 E2E 미실행(크롬 확장 미연결). tsc/vite build/42 pytest 는 통과.
 
+## Step 4 마디 검수 설계 메모 (완료)
+
+- `regen.py`:
+  - `measure_windows(analysis)` → 마디별 (t0,t1). xml_builder QuantGrid와 동일 규칙
+    (원점 `beat_times[0]`, 마디당 numerator 비트, 범위 밖은 median 주기 외삽).
+  - `selected_span(analysis, [2,3])` → 선택 마디 enclosing 구간 + 유효 번호.
+  - `analyze_window(stems, base, span)` : **비트트래킹은 재실행 안 함**. base 글로벌
+    그리드를 슬라이스-상대로 옮겨 melody(pyin)+harmony(chroma)만 재추출, 절대시간 복원.
+    앞마디 2비트 컨텍스트 패딩, 리딩엣지 0.2비트 grace.
+  - `merge_window(base, notes, chords, span)` : span 안 이벤트만 교체(코드는 midpoint 기준).
+- `pitch_sensitivity`(0~1) → `min_note_sec` 0.16~0.03 매핑. `quantize_division` → build 오버라이드.
+- API: `GET /api/measures/{id}`, `POST /api/regenerate-measure/{id}` {measures, pitch_sensitivity, quantize_division}
+  → analysis.json 갱신 + full.musicxml 재빌드 + 전체 musicxml 문자열 반환.
+- 프론트 `MeasureInspector`: 마디 번호 칩 다중선택 + 감도 슬라이더 + 양자화 select →
+  재분석 후 `osmd.load(musicxml)` 리렌더, analysis 재fetch.
+- `discover_stems` 를 `audio_analyzer/stems.py` 로 분리(analyze 라우트와 공유).
+
 ## 다음 액션
 
-1. **Step 4 — 마디 검수**: `/api/regenerate-measure` (`analyze(window=)` + `xml_builder` 부분 →
-   기존 MusicXML `<measure>` 노드 패치). 프론트: OSMD 마디 클릭 선택 UI.
+1. **Step 5 — Form Compressor** (`form_compressor.py`): 마디별 코드/멜로디 유사도 →
+   반복 섹션 감지 → 도돌이표/1·2절 볼타/D.S. al Coda 삽입 → 축약 리드시트 출력.
 2. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·검증.
-3. 브라우저 E2E 확인(크롬 확장 연결 후).
+3. 브라우저 E2E 확인(크롬 확장 연결 후). 마디 클릭 선택(SVG hit-test) 고도화.
