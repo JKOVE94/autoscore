@@ -5,6 +5,8 @@
 #   ./run bootstrap    install system prereqs via Homebrew, then setup (macOS)
 #   ./run setup        create the venv, install backend + frontend deps, seed .env
 #   ./run dev          start backend (:8000) and frontend (:5173) together
+#   ./run docker       build + start everything in containers (docker compose up)
+#   ./run docker-down  stop the containers
 #   ./run doctor       check prerequisites and external engines
 #   ./run test         backend pytest + frontend typecheck
 #   ./run stop         free ports 8000 / 5173
@@ -149,16 +151,25 @@ cmd_dev() {
   wait -n "$API_PID" "$WEB_PID" 2>/dev/null || wait "$API_PID" "$WEB_PID" 2>/dev/null || true
 }
 
+cmd_docker() {
+  command -v docker >/dev/null 2>&1 || { err "docker not found — install Docker Desktop or OrbStack"; exit 1; }
+  step "docker compose up  (backend :$API_PORT · frontend :$WEB_PORT)"
+  printf "  ${c_dim}Ctrl+C to stop. Higher-quality separation: WITH_DEMUCS=1 ./run docker${c_reset}\n\n"
+  exec docker compose -f "$ROOT/docker-compose.yml" up --build "$@"
+}
+
 case "${1:-dev}" in
-  setup)     cmd_setup ;;
-  dev|"")    cmd_dev ;;
-  doctor)    cmd_doctor ;;
-  test)      cmd_test ;;
-  stop)      cmd_stop ;;
-  clean)     cmd_clean ;;
-  bootstrap) shift; exec "$ROOT/scripts/bootstrap.sh" "$@" ;;
+  setup)       cmd_setup ;;
+  dev|"")      cmd_dev ;;
+  doctor)      cmd_doctor ;;
+  test)        cmd_test ;;
+  stop)        cmd_stop ;;
+  clean)       cmd_clean ;;
+  bootstrap)   shift; exec "$ROOT/scripts/bootstrap.sh" "$@" ;;
+  docker)      shift; cmd_docker "$@" ;;
+  docker-down) exec docker compose -f "$ROOT/docker-compose.yml" down ;;
   -h|--help|help)
-    sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
+    sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
   *)
     err "unknown command: $1"; echo "try: ./run help"; exit 1 ;;
 esac

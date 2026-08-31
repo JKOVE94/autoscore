@@ -1,0 +1,44 @@
+name: autoscore
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        WITH_DEMUCS: ${WITH_DEMUCS:-0}
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      TORCH_DEVICE: cpu
+      STORAGE_DIR: /data
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      # demucs is only actually installed when built with WITH_DEMUCS=1;
+      # otherwise mode 1/2 return a clear "install a separator" error.
+      STEM_FALLBACK: demucs
+      # reload works on bind mounts in the Docker VM only with polling
+      WATCHFILES_FORCE_POLLING: "true"
+    volumes:
+      - ./backend:/app
+      - autoscore-data:/data
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      # vite dev proxy target (see frontend/vite.config.ts)
+      VITE_API_TARGET: http://backend:8000
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  autoscore-data:

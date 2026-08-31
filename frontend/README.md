@@ -5,7 +5,8 @@ Vite 6 + React 18 + TypeScript(strict) + Tailwind CSS 3.
 
 ## 실행
 
-레포 루트에서 `./run` 이면 백엔드까지 함께 뜹니다. 프론트만 직접 다룰 때:
+레포 루트에서 `./run` (로컬) 또는 `./run docker` (컨테이너) 로 백엔드까지 함께 뜹니다.
+프론트만 직접 다룰 때:
 
 ```bash
 cd frontend

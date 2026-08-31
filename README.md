@@ -46,6 +46,7 @@ autoscore/
 |------|------|
 | `./run bootstrap` | Homebrew 시스템 패키지 설치 후 setup (macOS). `--full` = demucs·basic-pitch·madmom·essentia 까지 |
 | `./run` | 필요하면 setup 후 두 서버 실행 (Ctrl+C로 둘 다 종료) |
+| `./run docker` | 컨테이너로 전체 실행 (`docker compose up --build`) |
 | `./run setup` | venv 생성 · 백엔드/프론트 의존성 설치 · `.env` 생성 |
 | `./run doctor` | 사전 요구사항 + 외부 엔진 상태 점검 |
 | `./run test` | 백엔드 pytest + ruff + 프론트 타입체크 |
@@ -53,6 +54,20 @@ autoscore/
 | `./run clean` | venv · node_modules · storage 초기화 |
 
 `make bootstrap|setup|dev|doctor|test|stop|clean` 도 동일하게 동작합니다.
+
+### Docker
+
+```bash
+./run docker                    # = docker compose up --build  (backend :8000, frontend :5173)
+WITH_DEMUCS=1 ./run docker      # + demucs(CPU) 포함 → Stemdeck 없이 모드 1·2 동작
+./run docker-down               # 중지
+```
+
+소스는 bind-mount 되어 핫리로드됩니다. 분석 결과는 `autoscore-data` 볼륨에 유지됩니다.
+
+> ⚠️ 컨테이너는 Linux 라서 **Apple Silicon 가속 경로가 없습니다** — Stemdeck(CoreML) 미동작,
+> torch 는 CPU(`TORCH_DEVICE=cpu`). librosa 폴백 분석은 정상 동작하며, 음원 분리는
+> `WITH_DEMUCS=1` 로 빌드해 CPU demucs 를 씁니다. CoreML 가속이 필요하면 로컬(`./run`)로 실행하세요.
 
 **필요한 것**: Python 3.10–3.12, Node 20+, (선택) `ffmpeg`.
 `bootstrap` 없이도 `./run setup` 이 anaconda 등에 설치된 Python 3.11 을 자동 탐지합니다.

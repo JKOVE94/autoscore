@@ -175,6 +175,21 @@
   `madmom`·`essentia` best-effort 설치. Homebrew 자체는 미설치 시 공식 명령 안내 후 종료.
   검증: 전 패키지 존재 상태에서 스킵→setup→doctor 정상.
 
+## Docker 컨테이너화 (완료)
+
+- `backend/Dockerfile` : `python:3.11-slim-bookworm` + `ffmpeg`·`libsndfile1`.
+  `requirements.txt` 설치, `ARG WITH_DEMUCS=1` 시 demucs 추가. `TORCH_DEVICE=cpu`,
+  `STORAGE_DIR=/data`, healthcheck(`/health`).
+- `frontend/Dockerfile` : `node:22-slim`, `npm ci`, `vite --host 0.0.0.0`.
+- `docker-compose.yml` (`name: autoscore`) :
+  - backend :8000, frontend :5173, `VITE_API_TARGET=http://backend:8000`(프록시).
+  - 소스 bind-mount + 핫리로드(`WATCHFILES_FORCE_POLLING`, `CHOKIDAR_USEPOLLING`).
+  - `autoscore-data` 네임드 볼륨에 storage 유지. `STEM_FALLBACK=demucs`.
+- `vite.config.ts` : `server.host=true`, `CHOKIDAR_USEPOLLING=true` 시 폴링 watch.
+- `./run docker`(= `up --build`), `./run docker-down`. `WITH_DEMUCS=1 ./run docker`.
+- ⚠️ 컨테이너는 Linux — CoreML/MPS 없음. Stemdeck 미동작(→demucs), torch CPU.
+  librosa 폴백 분석은 정상. CoreML 필요 시 로컬 `./run`.
+
 ## 후속 검증 항목 (기능 구현 완료, 환경 제약으로 미실행)
 
 1. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·품질 비교.
