@@ -45,6 +45,17 @@ def main() -> int:
     except ImportError:
         ok = False
         print("[music21]  import      : MISSING (pip install -r requirements.txt)")
+    print("-" * 60)
+
+    from app.services.audio_analyzer import backend_status
+
+    status = backend_status()
+    for lib, present in status["capabilities"].items():
+        print(f"[analysis]  {lib:<12}: {'ok' if present else 'missing'}")
+    print(f"[analysis]  selected    : {status['selected']}")
+    if status["selected"]["melody"] == "none":
+        ok = False
+        print("  ! install librosa (fallback) or basic-pitch for melody extraction")
 
     print("=" * 60)
     print("RESULT:", "ALL ENGINES READY" if ok else "SOME ENGINES NOT CONFIGURED")

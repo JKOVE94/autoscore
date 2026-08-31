@@ -36,6 +36,38 @@ class OMRResult(BaseModel):
     elapsed_sec: float
 
 
+class NoteEventOut(BaseModel):
+    start_sec: float
+    end_sec: float
+    midi: int
+    velocity: float
+    confidence: float
+
+
+class ChordEventOut(BaseModel):
+    start_sec: float
+    end_sec: float
+    symbol: str
+    root_pc: int | None = None
+    quality: str | None = None
+    confidence: float
+
+
+class AnalysisResponse(BaseModel):
+    job_id: str
+    duration_sec: float
+    bpm: float
+    key: str
+    time_signature: str
+    beat_times: list[float]
+    downbeat_times: list[float]
+    notes: list[NoteEventOut]
+    chords: list[ChordEventOut]
+    backends: dict[str, str]
+    window_offset_sec: float
+    result_path: str | None = None
+
+
 class UploadResponse(BaseModel):
     job_id: str
     mode: InputMode

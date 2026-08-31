@@ -8,16 +8,18 @@ pydantic-settings==2.7.1
 # --- Music / notation ---
 music21==9.3.0
 
-# --- Audio analysis (Step 2) ---
-# NOTE: the whole backend targets Python 3.11 — basic-pitch / madmom / essentia
-#       have no 3.14 wheels. Create the venv at backend/.venv with python3.11.
-basic-pitch==0.4.0
+# --- Audio analysis (Step 2) — fallback path (required) ---
+# The whole backend targets Python 3.11 (no 3.14 wheels for the audio stack).
 librosa==0.10.2.post1
 numpy==1.26.4
 soundfile==0.12.1
-madmom==0.16.1
-# essentia is installed separately on Apple Silicon:
-#   pip install essentia   (or build essentia-tensorflow from source)
+
+# --- Audio analysis — premium backends (optional) ---
+# audio_analyzer imports these lazily and degrades to the librosa fallback when
+# absent. Install when you want higher-quality transcription:
+#   pip install basic-pitch==0.4.0     # melody (Spotify note transcription)
+#   pip install madmom==0.16.1         # rhythm (RNN downbeat tracking)
+#   pip install essentia               # key + chord (HPCP); Apple Silicon: build/altwheels
 
 # --- Dev / test ---
 pytest==8.3.4

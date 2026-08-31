@@ -47,6 +47,16 @@ class ScoreValidationError(AutoScoreError):
     code = "score_validation_failed"
 
 
+class AudioDecodeError(AutoScoreError):
+    status_code = 415
+    code = "audio_decode_failed"
+
+
+class AudioAnalysisError(AutoScoreError):
+    status_code = 502
+    code = "audio_analysis_failed"
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AutoScoreError)
     async def _handle(_: Request, exc: AutoScoreError) -> JSONResponse:

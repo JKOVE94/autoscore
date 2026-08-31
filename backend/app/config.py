@@ -35,6 +35,16 @@ class Settings(BaseSettings):
 
     torch_device: str = "mps"
 
+    # --- Step 2: audio analysis ---
+    analysis_sample_rate: int = 22050
+    quantize_division: int = 16          # grid resolution (16 = sixteenth notes)
+    default_time_signature: str = "4/4"
+    melody_fmin_hz: float = 65.41        # C2
+    melody_fmax_hz: float = 1046.5       # C6
+    min_note_sec: float = 0.08           # discard shorter melody blips
+    chord_change_min_beats: int = 1      # min chord duration in beats
+    prefer_backends: bool = True         # try basic-pitch/essentia/madmom before fallbacks
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

@@ -21,7 +21,7 @@ autoscore/
 │   │   ├── services/
 │   │   │   ├── stem_splitter.py   Stemdeck CLI 래퍼 (입력모드 1)   ✅ Step 1
 │   │   │   ├── omr_engine.py      Audiveris CLI 래퍼 (입력모드 3)  ✅ Step 1
-│   │   │   ├── audio_analyzer.py  basic-pitch/essentia/madmom      📋 Step 2
+│   │   │   ├── audio_analyzer/    멜로디·리듬·화성 분석 패키지      ✅ Step 2
 │   │   │   └── xml_builder.py     music21 양자화·조립              📋 Step 2
 │   │   └── schemas/          Pydantic 모델
 │   ├── scripts/check_engines.py   외부 엔진 연동 검증 CLI
@@ -79,20 +79,43 @@ uvicorn app.main:app --reload
 | POST | `/api/upload` | 파일 업로드 → 입력모드 자동 판별 (`job_id` 반환) |
 | POST | `/api/separate/{job_id}` | 입력모드 1: Stemdeck으로 vocal/drums/bass/other 분리 |
 | POST | `/api/omr/{job_id}` | 입력모드 3: Audiveris OMR → MusicXML + music21 검증 |
+| POST | `/api/analyze/{job_id}` | Step 2: 분리된 stem에서 BPM/key/코드/멜로디 추출 (`{"window":[t0,t1]}` 옵션) |
+| GET | `/api/analyze/backends` | 분석 백엔드(basic-pitch/essentia/madmom/librosa) 가용성 |
 
 ### 5. 테스트 & 린트
 
 ```bash
 cd backend
-pytest -q          # 10 passed
+pytest -q          # 31 passed
 ruff check .
 ```
 
 ---
 
+## Step 2 — 오디오 분석 (audio_analyzer, 완료)
+
+`app/services/audio_analyzer/` 패키지. 무거운 의존성은 lazy import이며 **librosa 폴백**으로
+`numpy`/`librosa`/`soundfile`만 있어도 동작합니다.
+
+| 스테이지 | 프리미엄 백엔드 | 폴백 |
+|---|---|---|
+| 멜로디 (`melody.py`) | basic-pitch | `librosa.pyin` + 노트 분절 |
+| 리듬 (`rhythm.py`) | madmom | `librosa.beat_track` + downbeat phase 탐색 |
+| 화성 (`harmony.py`) | essentia | CQT chroma + Krumhansl 키 + 코드템플릿 코사인 매칭 |
+
+```bash
+# 폴백만: 이미 설치됨 (numpy, librosa, soundfile)
+# 프리미엄: pip install basic-pitch madmom ; pip install essentia
+python -c "from app.services.audio_analyzer import analyze"
+```
+
+`analyze(stems, window=(t0,t1))` — `window`는 구간만 분석 후 절대시간으로 재앵커(Step 4 재사용).
+
+---
+
 ## 다음 단계
 
-- **Step 2**: `audio_analyzer.py` / `xml_builder.py` 구현 (스텁 존재)
+- **Step 2 (남음)**: `xml_builder.py` — `AnalysisResult` → music21 마디 조립/양자화
 - **Step 3**: 프론트엔드 (OSMD 렌더링 + Tone.js 재생)
 - **Step 4**: 마디 단위 검수 & `/api/regenerate-measure`
 - **Step 5**: 송 폼 분석 + 리드 시트 축약 엔진
