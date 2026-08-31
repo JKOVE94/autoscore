@@ -2,6 +2,7 @@
 # AutoScore dev orchestrator — one command for setup, running, and checks.
 #
 #   ./run              first-time setup if needed, then start both servers
+#   ./run bootstrap    install system prereqs via Homebrew, then setup (macOS)
 #   ./run setup        create the venv, install backend + frontend deps, seed .env
 #   ./run dev          start backend (:8000) and frontend (:5173) together
 #   ./run doctor       check prerequisites and external engines
@@ -149,14 +150,15 @@ cmd_dev() {
 }
 
 case "${1:-dev}" in
-  setup)   cmd_setup ;;
-  dev|"")  cmd_dev ;;
-  doctor)  cmd_doctor ;;
-  test)    cmd_test ;;
-  stop)    cmd_stop ;;
-  clean)   cmd_clean ;;
+  setup)     cmd_setup ;;
+  dev|"")    cmd_dev ;;
+  doctor)    cmd_doctor ;;
+  test)      cmd_test ;;
+  stop)      cmd_stop ;;
+  clean)     cmd_clean ;;
+  bootstrap) shift; exec "$ROOT/scripts/bootstrap.sh" "$@" ;;
   -h|--help|help)
-    sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
+    sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
   *)
     err "unknown command: $1"; echo "try: ./run help"; exit 1 ;;
 esac

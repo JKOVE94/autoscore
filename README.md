@@ -32,14 +32,19 @@ autoscore/
 
 ---
 
-## 빠른 시작 (한 줄)
+## 빠른 시작
 
 ```bash
-./run            # 최초 실행 시 자동 설치 후 백엔드(:8000) + 프론트(:5173) 동시 기동
+# 완전 새 맥이면 (Homebrew로 python@3.11 · node · ffmpeg · Java17 설치 후 setup)
+./run bootstrap             # 고품질 분석까지: ./run bootstrap --full
+
+# 이후 (또는 Python/Node가 이미 있으면 처음부터)
+./run                       # 필요 시 setup 후 백엔드(:8000) + 프론트(:5173) 기동
 ```
 
 | 명령 | 설명 |
 |------|------|
+| `./run bootstrap` | Homebrew 시스템 패키지 설치 후 setup (macOS). `--full` = demucs·basic-pitch·madmom·essentia 까지 |
 | `./run` | 필요하면 setup 후 두 서버 실행 (Ctrl+C로 둘 다 종료) |
 | `./run setup` | venv 생성 · 백엔드/프론트 의존성 설치 · `.env` 생성 |
 | `./run doctor` | 사전 요구사항 + 외부 엔진 상태 점검 |
@@ -47,10 +52,10 @@ autoscore/
 | `./run stop` | 8000 / 5173 포트 정리 |
 | `./run clean` | venv · node_modules · storage 초기화 |
 
-`make setup|dev|doctor|test|stop|clean` 도 동일하게 동작합니다.
+`make bootstrap|setup|dev|doctor|test|stop|clean` 도 동일하게 동작합니다.
 
-**필요한 것**: Python 3.10–3.12, Node 20+, (선택) `ffmpeg` — YouTube/URL 입력용
-(`brew install ffmpeg`). `./run setup` 이 anaconda 등에 설치된 3.11도 자동 탐지합니다.
+**필요한 것**: Python 3.10–3.12, Node 20+, (선택) `ffmpeg`.
+`bootstrap` 없이도 `./run setup` 이 anaconda 등에 설치된 Python 3.11 을 자동 탐지합니다.
 
 <details>
 <summary>수동 설정 (스크립트 없이)</summary>
@@ -70,10 +75,12 @@ cd frontend && npm install && cp .env.example .env
 |------|------|------|----------|
 | Stemdeck | 입력모드 1·2 음원 분리 | https://github.com/stemdeckapp/stemdeck | `STEMDECK_BIN` (또는 `STEM_FALLBACK=demucs`) |
 | Audiveris | 입력모드 3 OMR | https://github.com/Audiveris/audiveris (Java 17+) | `AUDIVERIS_BIN` |
-| ffmpeg | YouTube/URL 오디오 추출 | `brew install ffmpeg` | `FFMPEG_BIN` |
+| ffmpeg | YouTube/URL 오디오 추출 | `./run bootstrap` 또는 `brew install ffmpeg` | `FFMPEG_BIN` |
 
-미설정 시: 분석은 librosa 폴백으로 동작, Stemdeck/Audiveris 필요 모드만 실패합니다.
-`backend/.env` 로 경로·옵션을 조정하세요.
+- `./run bootstrap --full` 은 **demucs** 를 설치하고 `backend/.env` 의 `STEM_FALLBACK=demucs`
+  로 바꿔줘서 Stemdeck 없이도 모드 1·2 가 동작합니다.
+- 미설정 시: 분석은 librosa 폴백으로 동작, Stemdeck/Audiveris 필요 모드만 실패.
+- Stemdeck·Audiveris 는 수동 설치 후 `backend/.env` 에 경로를 넣으세요.
 
 ### API
 

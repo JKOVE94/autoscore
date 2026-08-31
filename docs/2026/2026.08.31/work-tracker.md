@@ -169,6 +169,12 @@
 - `Makefile` 은 `./run` 으로 위임하는 얇은 래퍼.
 - 검증: `./run doctor`, `./run test`(67 pass), `./run dev`(양 서버 기동 확인), `./run stop` 정상.
 
+- `scripts/bootstrap.sh` (= `./run bootstrap`, macOS): Homebrew 로 `python@3.11`·`node`·
+  `ffmpeg`·`openjdk@17` 중 없는 것만 설치(있으면 스킵, `--yes` 로 무프롬프트) → `./run setup` → `./run doctor`.
+  `--full` : venv 에 `demucs`(+`.env` STEM_FALLBACK=demucs 자동 전환)·`basic-pitch[coreml]`·
+  `madmom`·`essentia` best-effort 설치. Homebrew 자체는 미설치 시 공식 명령 안내 후 종료.
+  검증: 전 패키지 존재 상태에서 스킵→setup→doctor 정상.
+
 ## 후속 검증 항목 (기능 구현 완료, 환경 제약으로 미실행)
 
 1. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·품질 비교.
