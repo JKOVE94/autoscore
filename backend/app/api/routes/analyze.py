@@ -17,8 +17,6 @@ from app.services.audio_analyzer import backend_status
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 
-_CANONICAL = ("vocal", "drums", "bass", "other")
-
 
 class AnalyzeRequest(BaseModel):
     window: tuple[float, float] | None = None

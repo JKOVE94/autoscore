@@ -68,6 +68,17 @@ class AnalysisResponse(BaseModel):
     result_path: str | None = None
 
 
+class BuildResponse(BaseModel):
+    job_id: str
+    musicxml_path: str
+    measure_count: int
+    note_count: int
+    rest_count: int
+    chord_symbol_count: int
+    dropped_notes: int
+    warnings: list[str] = Field(default_factory=list)
+
+
 class UploadResponse(BaseModel):
     job_id: str
     mode: InputMode

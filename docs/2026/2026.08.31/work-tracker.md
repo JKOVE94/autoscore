@@ -3,7 +3,7 @@
 - **목적**: 오디오/Stem/악보이미지 → MusicXML 생성 → 웹 GUI 시각화·재생·검수 → 반복기호 기반 축약형 리드 시트 변환 엔드투엔드 파이프라인 구축
 - **작성일**: 2026-08-31
 - **작성자**: Claude Code (총괄 PM & 아키텍트)
-- **상태**: 🔄 진행 중 — Step 1 완료, Step 2 진행 중 (audio_analyzer 완료 / xml_builder 대기)
+- **상태**: 🔄 진행 중 — Step 1·2 완료 (audio_analyzer + xml_builder), Step 3(프론트엔드) 대기
 - **타깃 환경**: Apple Silicon (M1 Pro, macOS), 로컬 구동
 
 ---
@@ -41,7 +41,7 @@
 | 3 | Step 1 | Audiveris OMR 연동 래퍼 | `backend/app/services/omr_engine.py` | ✅ | subprocess + music21 파싱, 단위테스트 포함 |
 | 4 | Step 1 | 외부 엔진 경로/설정 검증 CLI | `backend/scripts/check_engines.py` | ✅ | `python -m scripts.check_engines` |
 | 5 | Step 2 | 오디오 분석 (멜로디/리듬/화성) | `backend/app/services/audio_analyzer/` | ✅ | 패키지화. basic-pitch/essentia/madmom lazy + librosa 폴백. `/api/analyze/{job_id}`. 20 테스트 |
-| 6 | Step 2 | MusicXML 빌더 (music21 양자화/조립) | `backend/app/services/xml_builder.py` | 📋 | 스텁 존재 — 미구현 (다음 작업) |
+| 6 | Step 2 | MusicXML 빌더 (music21 양자화/조립) | `backend/app/services/xml_builder.py` | ✅ | QuantGrid 양자화 + 리드시트(멜로디+코드심볼) 조립. `POST /api/build/{job_id}`. 9 테스트 |
 | 7 | Step 3 | 프론트엔드 (Vite + React + TS + Tailwind) | `frontend/` | 📋 | 디렉터리만 생성 |
 | 8 | Step 3 | OSMD 렌더링 컴포넌트 | `frontend/src/components/ScoreView.tsx` | 📋 | 미착수 |
 | 9 | Step 3 | Tone.js 재생기 + OSMD 커서 동기화 | `frontend/src/components/Player.tsx` | 📋 | 미착수 |
@@ -83,10 +83,23 @@
 - API: `POST /api/analyze/{job_id}` (stems 자동탐색: `storage/stems/{id}` → `storage/uploads/{id}`), `GET /api/analyze/backends`.
 - 결과 JSON → `storage/outputs/{job_id}/analysis.json`.
 
+## Step 2 xml_builder 설계 메모 (완료)
+
+- `QuantGrid(beat_times, beat_unit, division)`: 초 → quarterLength 매핑. beat 위치를
+  선형보간 후 subdivision(4/4·division16 → 비트당 4개)에 스냅. 마지막 비트 이후는
+  median 비트 주기로 외삽.
+- 마디 원점 = `beat_times[0]` (다운비트 phase보다 비트트래킹을 신뢰).
+  `downbeat_times[0]` 이 반박자 이상 어긋나면 warning (아나크루시스 무시).
+- 멜로디: 양자화 → 모노포니 강제(다음 온셋에서 이전 음 절단) → 갭 rest → music21
+  `makeNotation`(마디분할·타이·빔). 음표 없으면 마디 수만큼 rest.
+- 코드심볼: `root_pc`+`quality` → music21 `ChordSymbol(root, kind)`. onset을 비트로
+  스냅, 해당 마디에 삽입, 연속 중복 제거, `N.C.` 스킵. `writeAsChord=False`.
+- 출력: `storage/outputs/{job_id}/full.musicxml`. `BuildResult`(마디/음표/rest/코드/드롭 수 + warnings).
+- 전체 체인: `upload → separate → analyze → build`.
+
 ## 다음 액션
 
-1. **Step 2 row #6 — `xml_builder.py`**: `AnalysisResult` → music21 파트/마디 조립.
-   - beat_times/downbeat_times로 마디 분할, 16분음표 양자화, 상단 harmony(코드심볼)+하단 melody.
-   - `storage/outputs/{job_id}/full.musicxml` 출력, music21 유효성 검증.
-2. `audio_analyzer`에 basic-pitch/essentia/madmom 실제 설치 후 프리미엄 경로 검증 (별도 venv 이슈 확인).
-3. Step 3 프론트엔드 착수.
+1. **Step 3 — 프론트엔드**: Vite+React+TS, 업로드 패널(모드1/2/3), 메타헤더,
+   `OpenSheetMusicDisplay` 렌더링, `Tone.js` 재생 + OSMD 커서 동기화.
+2. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·검증.
+3. Step 4 마디 검수(`/api/regenerate-measure`) — `analyze(window=)` + `<measure>` 패치 재사용.

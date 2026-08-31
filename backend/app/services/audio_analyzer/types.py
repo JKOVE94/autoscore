@@ -65,6 +65,41 @@ class AnalysisResult:
     backends: dict[str, str] = field(default_factory=dict)  # stage -> engine name
     window_offset_sec: float = 0.0  # >0 when only a slice was analysed (Step 4)
 
+    @classmethod
+    def from_dict(cls, data: dict) -> AnalysisResult:
+        """Rebuild from ``dataclasses.asdict`` output (e.g. a stored analysis.json)."""
+        return cls(
+            duration_sec=float(data["duration_sec"]),
+            bpm=float(data["bpm"]),
+            beat_times=[float(t) for t in data.get("beat_times", [])],
+            downbeat_times=[float(t) for t in data.get("downbeat_times", [])],
+            key=str(data.get("key", "C major")),
+            time_signature=str(data.get("time_signature", "4/4")),
+            notes=[
+                NoteEvent(
+                    start_sec=float(n["start_sec"]),
+                    end_sec=float(n["end_sec"]),
+                    midi=int(n["midi"]),
+                    velocity=float(n.get("velocity", 0.8)),
+                    confidence=float(n.get("confidence", 1.0)),
+                )
+                for n in data.get("notes", [])
+            ],
+            chords=[
+                ChordEvent(
+                    start_sec=float(c["start_sec"]),
+                    end_sec=float(c["end_sec"]),
+                    symbol=str(c["symbol"]),
+                    root_pc=(None if c.get("root_pc") is None else int(c["root_pc"])),
+                    quality=c.get("quality"),
+                    confidence=float(c.get("confidence", 1.0)),
+                )
+                for c in data.get("chords", [])
+            ],
+            backends=dict(data.get("backends", {})),
+            window_offset_sec=float(data.get("window_offset_sec", 0.0)),
+        )
+
     def summary(self) -> dict:
         return {
             "duration_sec": round(self.duration_sec, 2),

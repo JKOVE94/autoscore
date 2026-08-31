@@ -22,7 +22,7 @@ autoscore/
 │   │   │   ├── stem_splitter.py   Stemdeck CLI 래퍼 (입력모드 1)   ✅ Step 1
 │   │   │   ├── omr_engine.py      Audiveris CLI 래퍼 (입력모드 3)  ✅ Step 1
 │   │   │   ├── audio_analyzer/    멜로디·리듬·화성 분석 패키지      ✅ Step 2
-│   │   │   └── xml_builder.py     music21 양자화·조립              📋 Step 2
+│   │   │   └── xml_builder.py     music21 양자화·리드시트 조립       ✅ Step 2
 │   │   └── schemas/          Pydantic 모델
 │   ├── scripts/check_engines.py   외부 엔진 연동 검증 CLI
 │   └── tests/                pytest 단위 테스트
@@ -81,12 +81,13 @@ uvicorn app.main:app --reload
 | POST | `/api/omr/{job_id}` | 입력모드 3: Audiveris OMR → MusicXML + music21 검증 |
 | POST | `/api/analyze/{job_id}` | Step 2: 분리된 stem에서 BPM/key/코드/멜로디 추출 (`{"window":[t0,t1]}` 옵션) |
 | GET | `/api/analyze/backends` | 분석 백엔드(basic-pitch/essentia/madmom/librosa) 가용성 |
+| POST | `/api/build/{job_id}` | Step 2: 저장된 분석 → 리드시트 `full.musicxml` 조립 |
 
 ### 5. 테스트 & 린트
 
 ```bash
 cd backend
-pytest -q          # 31 passed
+pytest -q          # 40 passed
 ruff check .
 ```
 
@@ -111,12 +112,25 @@ python -c "from app.services.audio_analyzer import analyze"
 
 `analyze(stems, window=(t0,t1))` — `window`는 구간만 분석 후 절대시간으로 재앵커(Step 4 재사용).
 
+### xml_builder (리드시트 조립)
+
+`AnalysisResult` → `QuantGrid` 로 16분음표 양자화 → 단일 트레블 보표에 멜로디 +
+`<harmony>` 코드심볼 → music21 `makeNotation`(마디분할/타이/빔) → `full.musicxml`.
+
+```python
+from app.services.xml_builder import build_musicxml
+build_musicxml(analysis, "storage/outputs/<job>/full.musicxml", title="...")
+```
+
+전체 체인: **upload → separate → analyze → build**.
+
 ---
 
 ## 다음 단계
 
-- **Step 2 (남음)**: `xml_builder.py` — `AnalysisResult` → music21 마디 조립/양자화
-- **Step 3**: 프론트엔드 (OSMD 렌더링 + Tone.js 재생)
+- **Step 3**: 프론트엔드 (업로드 · OSMD 렌더링 · Tone.js 재생 + 커서 동기화)
+- **Step 4**: 마디 검수 & `/api/regenerate-measure` (`analyze(window=)` 재사용)
+- **Step 5**: 송 폼 분석 + 리드시트 축약 엔진 (반복/볼타/D.S.)
 - **Step 4**: 마디 단위 검수 & `/api/regenerate-measure`
 - **Step 5**: 송 폼 분석 + 리드 시트 축약 엔진
 
