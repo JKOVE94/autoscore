@@ -32,47 +32,52 @@ autoscore/
 
 ---
 
-## Step 1 — 백엔드 환경 설정 및 외부 엔진 연동 (현재 완료)
-
-### 1. 가상환경 & 의존성
+## 빠른 시작 (한 줄)
 
 ```bash
-cd backend
-python3.11 -m venv .venv          # 3.11 필수 (basic-pitch/essentia/madmom는 3.14 미지원)
-source .venv/bin/activate
-pip install -r requirements.txt
+./run            # 최초 실행 시 자동 설치 후 백엔드(:8000) + 프론트(:5173) 동시 기동
 ```
 
-> Step 1 검증만 하려면 최소 셋만 설치해도 됩니다:
-> `pip install fastapi "uvicorn[standard]" python-multipart pydantic-settings music21 pytest httpx ruff`
+| 명령 | 설명 |
+|------|------|
+| `./run` | 필요하면 setup 후 두 서버 실행 (Ctrl+C로 둘 다 종료) |
+| `./run setup` | venv 생성 · 백엔드/프론트 의존성 설치 · `.env` 생성 |
+| `./run doctor` | 사전 요구사항 + 외부 엔진 상태 점검 |
+| `./run test` | 백엔드 pytest + ruff + 프론트 타입체크 |
+| `./run stop` | 8000 / 5173 포트 정리 |
+| `./run clean` | venv · node_modules · storage 초기화 |
 
-### 2. 환경변수
+`make setup|dev|doctor|test|stop|clean` 도 동일하게 동작합니다.
+
+**필요한 것**: Python 3.10–3.12, Node 20+, (선택) `ffmpeg` — YouTube/URL 입력용
+(`brew install ffmpeg`). `./run setup` 이 anaconda 등에 설치된 3.11도 자동 탐지합니다.
+
+<details>
+<summary>수동 설정 (스크립트 없이)</summary>
 
 ```bash
-cp .env.example .env
-# STEMDECK_BIN, AUDIVERIS_BIN 경로를 실제 설치 위치로 수정
+cd backend && python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp backend/.env.example backend/.env
+cd frontend && npm install && cp .env.example .env
+# 백엔드: cd backend && .venv/bin/uvicorn app.main:app --reload
+# 프론트: cd frontend && npm run dev
 ```
+</details>
 
-| 엔진 | 설치 | 환경변수 |
-|------|------|----------|
-| Stemdeck | https://github.com/stemdeckapp/stemdeck | `STEMDECK_BIN` (미설정 시 `STEM_FALLBACK=demucs` 가능) |
-| Audiveris | https://github.com/Audiveris/audiveris (Java 17+) | `AUDIVERIS_BIN` |
-| yt-dlp + ffmpeg | `pip install yt-dlp` · `brew install ffmpeg` | `FFMPEG_BIN`, `YOUTUBE_ALLOWED_HOSTS`, `YOUTUBE_MAX_DURATION_SEC` |
+### 외부 엔진 (선택 — 없으면 폴백 동작)
 
-### 3. 엔진 연동 검증
+| 엔진 | 용도 | 설치 | 환경변수 |
+|------|------|------|----------|
+| Stemdeck | 입력모드 1·2 음원 분리 | https://github.com/stemdeckapp/stemdeck | `STEMDECK_BIN` (또는 `STEM_FALLBACK=demucs`) |
+| Audiveris | 입력모드 3 OMR | https://github.com/Audiveris/audiveris (Java 17+) | `AUDIVERIS_BIN` |
+| ffmpeg | YouTube/URL 오디오 추출 | `brew install ffmpeg` | `FFMPEG_BIN` |
 
-```bash
-cd backend
-python -m scripts.check_engines
-```
+미설정 시: 분석은 librosa 폴백으로 동작, Stemdeck/Audiveris 필요 모드만 실패합니다.
+`backend/.env` 로 경로·옵션을 조정하세요.
 
-### 4. API 기동
+### API
 
-```bash
-cd backend
-uvicorn app.main:app --reload
-# http://127.0.0.1:8000/docs
-```
+http://127.0.0.1:8000/docs 에서 전체 확인.
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
@@ -93,12 +98,10 @@ uvicorn app.main:app --reload
 | POST | `/api/compress/{job_id}` | Step 5: 반복 감지 → 도돌이표/볼타/D.S. 축약 리드시트 |
 | GET | `/api/lead-sheet/{job_id}` | Step 5: 축약 `lead_sheet.musicxml` 다운로드 |
 
-### 5. 테스트 & 린트
+### 테스트
 
 ```bash
-cd backend
-pytest -q          # 67 passed
-ruff check .
+./run test          # 백엔드 67 pytest + ruff + 프론트 타입체크
 ```
 
 ---

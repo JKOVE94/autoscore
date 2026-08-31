@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# AutoScore dev orchestrator — one command for setup, running, and checks.
+#
+#   ./run              first-time setup if needed, then start both servers
+#   ./run setup        create the venv, install backend + frontend deps, seed .env
+#   ./run dev          start backend (:8000) and frontend (:5173) together
+#   ./run doctor       check prerequisites and external engines
+#   ./run test         backend pytest + frontend typecheck
+#   ./run stop         free ports 8000 / 5173
+#   ./run clean        remove .venv, node_modules, and storage artifacts
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+API_PORT="${AUTOSCORE_API_PORT:-8000}"
+WEB_PORT="${AUTOSCORE_WEB_PORT:-5173}"
+VENV="$ROOT/backend/.venv"
+PY="$VENV/bin/python"
+
+c_reset=$'\033[0m'; c_bold=$'\033[1m'; c_grn=$'\033[32m'; c_yel=$'\033[33m'; c_red=$'\033[31m'; c_dim=$'\033[2m'
+ok()   { printf "  ${c_grn}✓${c_reset} %s\n" "$1"; }
+warn() { printf "  ${c_yel}!${c_reset} %s\n" "$1"; }
+err()  { printf "  ${c_red}✗${c_reset} %s\n" "$1"; }
+step() { printf "\n${c_bold}%s${c_reset}\n" "$1"; }
+
+# --- locate a Python the audio stack supports (3.10–3.12; no wheels on 3.13+) ---
+find_python() {
+  local c
+  for c in python3.12 python3.11 python3.10; do
+    command -v "$c" >/dev/null 2>&1 && { command -v "$c"; return 0; }
+  done
+  for c in "$HOME/anaconda3/bin/python3.11" "$HOME/miniconda3/bin/python3.11" \
+           "$HOME/anaconda3/bin/python3.12" /opt/homebrew/bin/python3.12 \
+           /opt/homebrew/bin/python3.11 /usr/local/bin/python3.11; do
+    [ -x "$c" ] && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+cmd_setup() {
+  step "1/4  Python backend"
+  if [ ! -x "$PY" ]; then
+    local base
+    if ! base="$(find_python)"; then
+      err "No Python 3.10–3.12 found. Install one (e.g. 'brew install python@3.11') and retry."
+      exit 1
+    fi
+    ok "using $base ($("$base" -V 2>&1))"
+    "$base" -m venv "$VENV"
+  else
+    ok "venv exists ($("$PY" -V 2>&1))"
+  fi
+  "$PY" -m pip install -q --upgrade pip
+  printf "  ${c_dim}installing backend requirements…${c_reset}\n"
+  "$PY" -m pip install -q -r "$ROOT/backend/requirements.txt"
+  ok "backend dependencies installed"
+  [ -f "$ROOT/backend/.env" ] || { cp "$ROOT/backend/.env.example" "$ROOT/backend/.env"; ok "backend/.env created"; }
+
+  step "2/4  Frontend"
+  if ! command -v npm >/dev/null 2>&1; then
+    err "npm not found — install Node.js 20+ (https://nodejs.org)"
+    exit 1
+  fi
+  ( cd "$ROOT/frontend" && npm install --silent )
+  ok "frontend dependencies installed"
+  [ -f "$ROOT/frontend/.env" ] || { cp "$ROOT/frontend/.env.example" "$ROOT/frontend/.env"; ok "frontend/.env created"; }
+
+  step "3/4  External tools"
+  command -v ffmpeg >/dev/null 2>&1 && ok "ffmpeg $(ffmpeg -version 2>/dev/null | head -1 | awk '{print $3}')" \
+    || warn "ffmpeg missing — 'brew install ffmpeg' (needed for YouTube/URL input)"
+
+  step "4/4  Engine check"
+  ( cd "$ROOT/backend" && "$PY" -m scripts.check_engines ) || true
+
+  printf "\n${c_bold}Setup done.${c_reset} Start everything with:  ${c_grn}./run${c_reset}\n"
+}
+
+cmd_doctor() {
+  step "Prerequisites"
+  [ -x "$PY" ] && ok "backend venv ($("$PY" -V 2>&1))" || err "backend venv missing — run './run setup'"
+  command -v node >/dev/null 2>&1 && ok "node $(node -v)" || err "node missing"
+  command -v npm  >/dev/null 2>&1 && ok "npm $(npm -v)"  || err "npm missing"
+  [ -d "$ROOT/frontend/node_modules" ] && ok "frontend node_modules" || err "frontend deps missing — run './run setup'"
+  command -v ffmpeg >/dev/null 2>&1 && ok "ffmpeg present" || warn "ffmpeg missing (YouTube/URL input)"
+
+  if [ -x "$PY" ]; then
+    step "External engines"
+    ( cd "$ROOT/backend" && "$PY" -m scripts.check_engines ) || true
+  fi
+}
+
+cmd_test() {
+  [ -x "$PY" ] || { err "run './run setup' first"; exit 1; }
+  step "Backend — pytest"
+  ( cd "$ROOT/backend" && "$PY" -m pytest -q )
+  step "Backend — ruff"
+  ( cd "$ROOT/backend" && "$VENV/bin/ruff" check . )
+  step "Frontend — typecheck"
+  ( cd "$ROOT/frontend" && npm run typecheck --silent )
+  ok "all checks passed"
+}
+
+cmd_stop() {
+  local freed=0
+  for port in "$API_PORT" "$WEB_PORT"; do
+    local pids
+    pids="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+    if [ -n "$pids" ]; then
+      echo "$pids" | xargs kill 2>/dev/null || true
+      ok "freed port $port"
+      freed=1
+    fi
+  done
+  [ "$freed" -eq 0 ] && ok "nothing running on :$API_PORT / :$WEB_PORT"
+}
+
+cmd_clean() {
+  cmd_stop
+  rm -rf "$VENV" "$ROOT/backend/.pytest_cache" "$ROOT/frontend/node_modules" "$ROOT/frontend/dist"
+  find "$ROOT/backend" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+  rm -rf "$ROOT"/backend/storage/{uploads,stems,outputs}/* 2>/dev/null || true
+  ok "removed venv, node_modules, caches and storage artifacts"
+}
+
+cmd_dev() {
+  [ -x "$PY" ] || { warn "not set up yet — running setup first"; cmd_setup; }
+  local vite="$ROOT/frontend/node_modules/.bin/vite"
+  [ -x "$vite" ] || { err "frontend not installed — run './run setup'"; exit 1; }
+
+  step "Starting AutoScore"
+  printf "  API  http://127.0.0.1:%s   (docs: /docs)\n  Web  http://127.0.0.1:%s\n  ${c_dim}Ctrl+C to stop both${c_reset}\n\n" "$API_PORT" "$WEB_PORT"
+
+  API_PID="" ; WEB_PID=""
+  cleanup() {
+    trap - EXIT INT TERM
+    [ -n "$API_PID" ] && kill "$API_PID" 2>/dev/null || true
+    [ -n "$WEB_PID" ] && kill "$WEB_PID" 2>/dev/null || true
+    wait 2>/dev/null || true
+    echo; ok "stopped"
+  }
+  trap cleanup EXIT INT TERM
+
+  ( cd "$ROOT/backend" && exec "$PY" -m uvicorn app.main:app --reload --port "$API_PORT" ) &
+  API_PID=$!
+  ( cd "$ROOT/frontend" && exec "$vite" --port "$WEB_PORT" --strictPort ) &
+  WEB_PID=$!
+
+  # if either process exits, bring the whole thing down
+  wait -n "$API_PID" "$WEB_PID" 2>/dev/null || wait "$API_PID" "$WEB_PID" 2>/dev/null || true
+}
+
+case "${1:-dev}" in
+  setup)   cmd_setup ;;
+  dev|"")  cmd_dev ;;
+  doctor)  cmd_doctor ;;
+  test)    cmd_test ;;
+  stop)    cmd_stop ;;
+  clean)   cmd_clean ;;
+  -h|--help|help)
+    sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
+  *)
+    err "unknown command: $1"; echo "try: ./run help"; exit 1 ;;
+esac

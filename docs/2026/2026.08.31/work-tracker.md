@@ -160,6 +160,15 @@
 - 8 테스트(URL 검증 / mock 추출 / 라우트 / health). 총 67 pytest.
 - ⚠️ 실제 YouTube 다운로드는 미실행(mock 테스트만). 링크 저작권/ToS는 이용자 책임.
 
+## 개발 자동화 스크립트 (완료)
+
+- 루트 `./run` (bash 3.2 호환, macOS 기본 셸 OK):
+  - 인자 없음 → 필요 시 setup 후 백엔드(:8000)+프론트(:5173) 동시 기동, Ctrl+C로 둘 다 종료
+  - `setup` : Python 3.10–12 자동탐지(anaconda 포함) → venv → `pip -r` → `npm install` → `.env` 생성 → check_engines
+  - `doctor` : 사전요구사항 + 엔진 상태 / `test` : pytest+ruff+tsc / `stop` : 포트 정리 / `clean` : 초기화
+- `Makefile` 은 `./run` 으로 위임하는 얇은 래퍼.
+- 검증: `./run doctor`, `./run test`(67 pass), `./run dev`(양 서버 기동 확인), `./run stop` 정상.
+
 ## 후속 검증 항목 (기능 구현 완료, 환경 제약으로 미실행)
 
 1. `audio_analyzer` 프리미엄 백엔드(basic-pitch/essentia/madmom) 실제 설치·품질 비교.
