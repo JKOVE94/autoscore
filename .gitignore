@@ -18,6 +18,9 @@ backend/storage/stems/*
 backend/storage/outputs/*
 !backend/storage/**/.gitkeep
 
+# Built web UI copied in by `./run start`
+backend/static/
+
 # Node / Frontend
 node_modules/
 frontend/dist/

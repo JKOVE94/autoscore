@@ -34,71 +34,63 @@ autoscore/
 
 ## 빠른 시작
 
+프론트엔드 + 백엔드가 **하나로 결합**되어 `http://localhost:8000` 한 곳에서 돕니다.
+
 ```bash
-# 완전 새 맥이면 (Homebrew로 python@3.11 · node · ffmpeg · Java17 설치 후 setup)
+# 완전 새 맥이면 먼저: brew로 python@3.11·node·ffmpeg 설치 + setup
 ./run bootstrap             # 고품질 분석까지: ./run bootstrap --full
 
-# 이후 (또는 Python/Node가 이미 있으면 처음부터)
-./run                       # 필요 시 setup 후 백엔드(:8000) + 프론트(:5173) 기동
+# 실행 (셋 중 하나)
+./run                       # UI 빌드 → API가 UI까지 서빙, 한 프로세스 (:8000)
+./run docker                # 한 컨테이너로 실행 (docker compose up)
+./run dev                   # 개발용: HMR 두 서버 (UI :5173, API :8000)
 ```
 
 | 명령 | 설명 |
 |------|------|
-| `./run bootstrap` | Homebrew 시스템 패키지 설치 후 setup (macOS). `--full` = demucs·basic-pitch·madmom·essentia 까지 |
-| `./run` | 필요하면 setup 후 두 서버 실행 (Ctrl+C로 둘 다 종료) |
-| `./run docker` | 컨테이너로 전체 실행 (`docker compose up --build`) |
-| `./run setup` | venv 생성 · 백엔드/프론트 의존성 설치 · `.env` 생성 |
-| `./run doctor` | 사전 요구사항 + 외부 엔진 상태 점검 |
+| `./run` / `./run start` | UI 빌드 후 API가 함께 서빙 — **한 프로세스, 한 포트(:8000)** |
+| `./run docker` | 한 컨테이너로 실행 (`docker compose up --build`) |
+| `./run dev` | 개발용 HMR: Vite UI(:5173) + API(:8000) 두 서버 |
+| `./run bootstrap` | Homebrew 시스템 패키지 설치 후 setup (macOS). `--full` = demucs 등 |
+| `./run setup` | venv 생성 · 의존성 설치 · `.env` 생성 |
+| `./run doctor` | 사전 요구사항 + 외부 엔진 상태 |
 | `./run test` | 백엔드 pytest + ruff + 프론트 타입체크 |
-| `./run stop` | 8000 / 5173 포트 정리 |
-| `./run clean` | venv · node_modules · storage 초기화 |
+| `./run stop` / `./run clean` | 포트 정리 / 초기화 |
 
-`make bootstrap|setup|dev|doctor|test|stop|clean` 도 동일하게 동작합니다.
+`make start|dev|docker|bootstrap|setup|doctor|test|stop|clean` 도 동일.
 
-### Docker
+### Docker — 단일 이미지
 
-```bash
-./run docker                    # = docker compose up --build  (backend :8000, frontend :5173)
-WITH_DEMUCS=1 ./run docker      # + demucs(CPU) 포함 → Stemdeck 없이 모드 1·2 동작
-./run docker-down               # 중지
-```
-
-소스는 bind-mount 되어 핫리로드됩니다. 분석 결과는 `autoscore-data` 볼륨에 유지됩니다.
-
-**빌드 없이 바로 실행** (GitHub Actions가 `main` push마다 GHCR에 멀티아치 이미지 발행):
+`Dockerfile` 이 프론트를 빌드해 백엔드에 넣은 **하나의 이미지**를 만듭니다.
 
 ```bash
-docker compose pull && docker compose up          # ghcr.io 이미지 사용
-# 또는 단독으로
-docker run -p 8000:8000 ghcr.io/jkove94/autoscore-backend:latest
-docker run -p 5173:5173 -e VITE_API_TARGET=http://host.docker.internal:8000 \
-  ghcr.io/jkove94/autoscore-frontend:latest
+./run docker                       # 로컬 빌드 후 실행
+WITH_DEMUCS=1 ./run docker          # + CPU demucs → Stemdeck 없이 모드 1·2 동작
+./run docker-down                  # 중지
+
+# 빌드 없이 (GitHub Actions가 main push마다 발행)
+docker compose pull && docker compose up
+docker run -p 8000:8000 -v autoscore-data:/data ghcr.io/jkove94/autoscore:latest
 ```
 
 | 이미지 | 태그 |
 |---|---|
-| `ghcr.io/jkove94/autoscore-backend` | `latest`, `main`, `sha-xxxxxxx`, 릴리스 태그 시 `1.2.3` |
-| `ghcr.io/jkove94/autoscore-frontend` | 〃 |
+| `ghcr.io/jkove94/autoscore` | `latest`, `main`, `sha-xxxxxxx`, 릴리스 태그 시 `1.2.3` |
+| `jkove94/autoscore` (Docker Hub) | 〃 |
 
-> 최초 발행 후 GitHub → Packages 에서 각 패키지를 **Public** 으로 전환하고 repo에 연결하세요.
-
-#### Docker Hub 에도 발행 (Docker Desktop 검색용)
-
-Docker Desktop 검색창은 Docker Hub만 뒤지므로, Hub에도 올리려면:
-
-1. hub.docker.com 에서 repo 생성: `autoscore-backend`, `autoscore-frontend`
-2. **Account settings → Personal access tokens** 에서 토큰 발급
-3. GitHub repo → **Settings → Secrets and variables → Actions → Secrets** 탭에 둘 다 등록:
-   - `DOCKERHUB_USERNAME` = Docker Hub 사용자명
-   - `DOCKERHUB_TOKEN` = 발급한 토큰
-4. 다음 `main` push(또는 Actions 탭에서 `docker-publish` 수동 실행)부터 GHCR + Docker Hub 양쪽 발행
-
-이후 Docker Desktop 검색창에 `<사용자명>/autoscore-backend` 로 검색되고, `Pull` → `Run` 으로
-관리할 수 있습니다. (변수 미설정 시 GHCR 만 발행 — 기존 동작 유지)
+분석 결과는 `autoscore-data` 볼륨(`/data`)에 유지됩니다.
 
 > ⚠️ 컨테이너는 Linux 라서 **Apple Silicon 가속 경로가 없습니다** — Stemdeck(CoreML) 미동작,
-> torch 는 CPU(`TORCH_DEVICE=cpu`). librosa 폴백 분석은 정상 동작하며, 음원 분리는
-> `WITH_DEMUCS=1` 로 빌드해 CPU demucs 를 씁니다. CoreML 가속이 필요하면 로컬(`./run`)로 실행하세요.
+> torch 는 CPU. librosa 폴백 분석은 정상이고, 음원 분리는 `WITH_DEMUCS=1` 로 CPU demucs 를 씁니다.
+> CoreML 가속이 필요하면 로컬 `./run` 으로 실행하세요.
+
+#### Docker Hub 발행 (Docker Desktop 검색용)
+
+1. hub.docker.com 에서 repo `autoscore` 생성, Personal access token 발급
+2. GitHub repo → **Settings → Secrets and variables → Actions → Secrets**:
+   `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` 등록
+3. 다음 `main` push(또는 Actions 탭 수동 실행)부터 GHCR + Docker Hub 양쪽 발행 →
+   Docker Desktop 검색창에 `<사용자명>/autoscore` 로 검색됨 (미설정 시 GHCR 만)
 
 **필요한 것**: Python 3.10–3.12, Node 20+, (선택) `ffmpeg`.
 `bootstrap` 없이도 `./run setup` 이 anaconda 등에 설치된 Python 3.11 을 자동 탐지합니다.
@@ -108,10 +100,10 @@ Docker Desktop 검색창은 Docker Hub만 뒤지므로, Hub에도 올리려면:
 
 ```bash
 cd backend && python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
-cp backend/.env.example backend/.env
-cd frontend && npm install && cp .env.example .env
-# 백엔드: cd backend && .venv/bin/uvicorn app.main:app --reload
-# 프론트: cd frontend && npm run dev
+cd ../frontend && npm install
+# 결합 실행: npm run build && cp -r dist ../backend/static
+#           cd ../backend && .venv/bin/uvicorn app.main:app --port 8000   → :8000
+# 개발 (HMR): 터미널 2개 — uvicorn --reload / npm run dev
 ```
 </details>
 
@@ -154,7 +146,7 @@ http://127.0.0.1:8000/docs 에서 전체 확인.
 ### 테스트
 
 ```bash
-./run test          # 백엔드 67 pytest + ruff + 프론트 타입체크
+./run test          # 백엔드 69 pytest + ruff + 프론트 타입체크
 ```
 
 ---

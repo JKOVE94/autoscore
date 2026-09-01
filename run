@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # AutoScore dev orchestrator — one command for setup, running, and checks.
 #
-#   ./run              first-time setup if needed, then start both servers
+#   ./run              first-time setup if needed, then start (combined)
+#   ./run start        one process: build the UI, serve it + API on :8000
+#   ./run dev          two servers with hot reload: API :8000, Vite UI :5173
 #   ./run bootstrap    install system prereqs via Homebrew, then setup (macOS)
 #   ./run setup        create the venv, install backend + frontend deps, seed .env
-#   ./run dev          start backend (:8000) and frontend (:5173) together
-#   ./run docker       build + start everything in containers (docker compose up)
-#   ./run docker-down  stop the containers
+#   ./run docker       one container: docker compose up --build  (:8000)
+#   ./run docker-down  stop the container
 #   ./run doctor       check prerequisites and external engines
 #   ./run test         backend pytest + frontend typecheck
 #   ./run stop         free ports 8000 / 5173
@@ -118,7 +119,7 @@ cmd_stop() {
 
 cmd_clean() {
   cmd_stop
-  rm -rf "$VENV" "$ROOT/backend/.pytest_cache" "$ROOT/frontend/node_modules" "$ROOT/frontend/dist"
+  rm -rf "$VENV" "$ROOT/backend/.pytest_cache" "$ROOT/backend/static" "$ROOT/frontend/node_modules" "$ROOT/frontend/dist"
   find "$ROOT/backend" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
   rm -rf "$ROOT"/backend/storage/{uploads,stems,outputs}/* 2>/dev/null || true
   ok "removed venv, node_modules, caches and storage artifacts"
@@ -151,16 +152,58 @@ cmd_dev() {
   wait -n "$API_PID" "$WEB_PID" 2>/dev/null || wait "$API_PID" "$WEB_PID" 2>/dev/null || true
 }
 
+cmd_start() {
+  [ -x "$PY" ] || cmd_setup
+  local npm_bin="$ROOT/frontend/node_modules/.bin/vite"
+  [ -x "$npm_bin" ] || { err "frontend not installed — run './run setup'"; exit 1; }
+
+  step "Building web UI"
+  ( cd "$ROOT/frontend" && npm run build --silent )
+  rm -rf "$ROOT/backend/static"
+  cp -r "$ROOT/frontend/dist" "$ROOT/backend/static"
+  ok "bundled into backend/static"
+
+  step "Starting AutoScore  →  http://127.0.0.1:$API_PORT"
+  printf "  ${c_dim}one process (UI + API). Ctrl+C to stop.${c_reset}\n\n"
+  ( cd "$ROOT/backend" && exec "$PY" -m uvicorn app.main:app --host 0.0.0.0 --port "$API_PORT" )
+}
+
+cmd_dev() {
+  [ -x "$PY" ] || { warn "not set up yet — running setup first"; cmd_setup; }
+  local vite="$ROOT/frontend/node_modules/.bin/vite"
+  [ -x "$vite" ] || { err "frontend not installed — run './run setup'"; exit 1; }
+
+  step "Starting AutoScore (dev)"
+  printf "  Open  http://127.0.0.1:%s   (API :%s, docs /docs)\n  ${c_dim}Ctrl+C to stop both${c_reset}\n\n" "$WEB_PORT" "$API_PORT"
+
+  API_PID="" ; WEB_PID=""
+  cleanup() {
+    trap - EXIT INT TERM
+    [ -n "$API_PID" ] && kill "$API_PID" 2>/dev/null || true
+    [ -n "$WEB_PID" ] && kill "$WEB_PID" 2>/dev/null || true
+    wait 2>/dev/null || true
+    echo; ok "stopped"
+  }
+  trap cleanup EXIT INT TERM
+
+  ( cd "$ROOT/backend" && exec "$PY" -m uvicorn app.main:app --reload --port "$API_PORT" ) &
+  API_PID=$!
+  ( cd "$ROOT/frontend" && exec "$vite" --port "$WEB_PORT" --strictPort ) &
+  WEB_PID=$!
+  wait -n "$API_PID" "$WEB_PID" 2>/dev/null || wait "$API_PID" "$WEB_PID" 2>/dev/null || true
+}
+
 cmd_docker() {
   command -v docker >/dev/null 2>&1 || { err "docker not found — install Docker Desktop or OrbStack"; exit 1; }
-  step "docker compose up  (backend :$API_PORT · frontend :$WEB_PORT)"
-  printf "  ${c_dim}Ctrl+C to stop. Higher-quality separation: WITH_DEMUCS=1 ./run docker${c_reset}\n\n"
+  step "docker compose up  →  http://127.0.0.1:$API_PORT"
+  printf "  ${c_dim}Ctrl+C to stop. CPU stem separation: WITH_DEMUCS=1 ./run docker${c_reset}\n\n"
   exec docker compose -f "$ROOT/docker-compose.yml" up --build "$@"
 }
 
-case "${1:-dev}" in
+case "${1:-start}" in
+  start|"")    cmd_start ;;
+  dev)         cmd_dev ;;
   setup)       cmd_setup ;;
-  dev|"")      cmd_dev ;;
   doctor)      cmd_doctor ;;
   test)        cmd_test ;;
   stop)        cmd_stop ;;
@@ -169,7 +212,7 @@ case "${1:-dev}" in
   docker)      shift; cmd_docker "$@" ;;
   docker-down) exec docker compose -f "$ROOT/docker-compose.yml" down ;;
   -h|--help|help)
-    sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
+    sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
   *)
     err "unknown command: $1"; echo "try: ./run help"; exit 1 ;;
 esac

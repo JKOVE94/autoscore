@@ -175,6 +175,21 @@
   `madmom`·`essentia` best-effort 설치. Homebrew 자체는 미설치 시 공식 명령 안내 후 종료.
   검증: 전 패키지 존재 상태에서 스킵→setup→doctor 정상.
 
+## 프론트/백엔드 결합 (완료)
+
+- `app/main.py._mount_web_ui()` : `STATIC_DIR`(기본 `backend/static`)에 빌드된 UI가 있으면
+  `StaticFiles(html=True)` 를 `/` 에 마운트(라우터 뒤 → `/api`·`/health`·`/docs` 우선).
+  없으면 API 전용(= dev 모드, Vite 프록시). `create_app(settings=)` 파라미터 추가.
+  `config.static_path` 프로퍼티. 빌드된 UI는 `/api` 상대경로 호출 → same-origin, CORS/프록시 불필요.
+- `./run start`(신규, 기본값) : `npm run build` → `backend/static` 복사 → uvicorn 단일 프로세스(:8000).
+  `./run dev` : 기존 2-서버 HMR. `./run` = `start`.
+- **단일 Dockerfile**(루트, 멀티스테이지: node 빌드 → python + `COPY --from`).
+  `backend/Dockerfile`·`frontend/Dockerfile` 삭제. `docker-compose.yml` 은 `app` 서비스 1개.
+- `frontend` : `@types/node` devDep 추가(clean `npm ci` 에서 `vite.config.ts` 의 `process` 타입).
+- 워크플로 : 이미지 1개 `autoscore` (platform 매트릭스만). `ghcr.io/jkove94/autoscore` +
+  `docker.io/jkove94/autoscore`. (기존 `-backend`/`-frontend` 패키지는 폐기 대상.)
+- 검증 : 결합 앱 pytest(`test_web_ui.py` 2개, 총 69) + 컨테이너 `/`·`/health`·`/api`·`/docs` 200 확인.
+
 ## Docker 컨테이너화 (완료)
 
 - `backend/Dockerfile` : `python:3.11-slim-bookworm` + `ffmpeg`·`libsndfile1`.

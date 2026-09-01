@@ -1,9 +1,10 @@
 # Thin wrapper around ./run — see `./run help`
-.PHONY: bootstrap setup dev docker docker-down doctor test stop clean
+.PHONY: start dev bootstrap setup docker docker-down doctor test stop clean
 
+start:       ; @./run start
+dev:         ; @./run dev
 bootstrap:   ; @./run bootstrap
 setup:       ; @./run setup
-dev:         ; @./run dev
 docker:      ; @./run docker
 docker-down: ; @./run docker-down
 doctor:      ; @./run doctor

@@ -5,22 +5,22 @@ Vite 6 + React 18 + TypeScript(strict) + Tailwind CSS 3.
 
 ## 실행
 
-레포 루트에서 `./run` (로컬) 또는 `./run docker` (컨테이너) 로 백엔드까지 함께 뜹니다.
-프론트만 직접 다룰 때:
+레포 루트에서 통합 실행:
+
+- `./run` — `vite build` → `backend/static/` 에 넣고 API가 함께 서빙 (한 프로세스 :8000)
+- `./run docker` — 같은 걸 한 컨테이너로
+- `./run dev` — 이 개발 서버(:5173, HMR) + API(:8000) 두 프로세스
+
+프론트만 직접:
 
 ```bash
-cd frontend
-npm install
-npm run dev          # http://localhost:5173  (dev proxy: /api -> http://127.0.0.1:8000)
+cd frontend && npm install
+npm run dev          # http://localhost:5173  (dev proxy: /api -> :8000)
+npm run build        # tsc + vite build -> dist/
 ```
 
-| 스크립트 | 설명 |
-|---|---|
-| `npm run dev` | 개발 서버 (HMR + `/api` 프록시) |
-| `npm run build` | `tsc` 타입체크 후 `vite build` → `dist/` |
-| `npm run typecheck` | 타입체크만 |
-
-`.env` (선택): `VITE_API_BASE` 로 절대 백엔드 주소 지정, `VITE_API_TARGET` 로 프록시 타깃 변경.
+빌드된 UI는 API 호출을 상대경로 `/api` 로 하므로, 백엔드가 같은 오리진에서 서빙하면
+프록시·CORS 불필요. `.env` 로 `VITE_API_BASE`(절대 주소) / `VITE_API_TARGET`(프록시 타깃) 조정 가능.
 
 ## 구조
 

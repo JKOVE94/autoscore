@@ -1,19 +1,20 @@
 name: docker-publish
 
-# Builds the backend + frontend images for linux/amd64 and linux/arm64 and
-# pushes multi-arch manifests to GitHub Container Registry (ghcr.io), and — when
-# configured — also to Docker Hub (so they show up in Docker Desktop search).
+# Builds the single combined image (backend + web UI) for linux/amd64 and
+# linux/arm64 and pushes a multi-arch manifest to GitHub Container Registry
+# (ghcr.io), and — when configured — also to Docker Hub (so it shows up in
+# Docker Desktop search).
 #
 #   push to main        -> :latest, :main, :sha-<short>
 #   tag v1.2.3          -> :1.2.3, :1.2, :latest
 #   manual (dispatch)   -> same as the branch it runs on
 #
 # Docker Hub (optional): add repo Secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN
-# (Settings > Secrets and variables > Actions > Secrets). Without them the
-# workflow just publishes to GHCR.
+# (Settings > Secrets and variables > Actions > Secrets). Without them it just
+# publishes to GHCR.
 #
-# Pull:  docker pull ghcr.io/jkove94/autoscore-backend:latest
-#        docker pull <dockerhub-user>/autoscore-backend:latest   # if Hub is configured
+# Pull:  docker pull ghcr.io/jkove94/autoscore:latest
+#        docker pull <dockerhub-user>/autoscore:latest        # if Hub is configured
 
 on:
   push:
@@ -34,7 +35,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [backend, frontend]
         platform:
           - runner: ubuntu-latest
             arch: linux/amd64
@@ -48,8 +48,8 @@ jobs:
         run: |
           arch='${{ matrix.platform.arch }}'
           echo "PLATFORM_PAIR=${arch//\//-}" >> "$GITHUB_ENV"
-          names="ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.image }}"
-          [ -n "$DOCKERHUB_USERNAME" ] && names="${names},docker.io/${DOCKERHUB_USERNAME}/autoscore-${{ matrix.image }}"
+          names="ghcr.io/${GITHUB_REPOSITORY,,}"
+          [ -n "$DOCKERHUB_USERNAME" ] && names="${names},docker.io/${DOCKERHUB_USERNAME}/autoscore"
           echo "PUSH_NAMES=$names" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}-${{ matrix.image }}
+          images: ghcr.io/${{ github.repository }}
 
       - uses: docker/setup-buildx-action@v3
 
@@ -81,13 +81,13 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.image }}/Dockerfile
+          file: Dockerfile
           platforms: ${{ matrix.platform.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false
           outputs: type=image,"name=${{ env.PUSH_NAMES }}",push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.image }}-${{ env.PLATFORM_PAIR }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ env.PLATFORM_PAIR }}
+          cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
+          cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
 
       - name: Export digest
         run: |
@@ -97,7 +97,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.image }}-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -105,29 +105,24 @@ jobs:
   merge:
     needs: build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image: [backend, frontend]
     env:
-      # optional: set repo secrets DOCKERHUB_USERNAME + DOCKERHUB_TOKEN to also
-      # publish to Docker Hub (so the images are searchable in Docker Desktop)
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - name: Prepare
         run: |
-          ghcr="ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.image }}"
+          ghcr="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "GHCR_IMAGE=$ghcr" >> "$GITHUB_ENV"
           {
             echo 'IMAGES<<EOF'
             echo "$ghcr"
-            [ -n "$DOCKERHUB_USERNAME" ] && echo "docker.io/${DOCKERHUB_USERNAME}/autoscore-${{ matrix.image }}"
+            [ -n "$DOCKERHUB_USERNAME" ] && echo "docker.io/${DOCKERHUB_USERNAME}/autoscore"
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
       - uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-${{ matrix.image }}-*
+          pattern: digests-*
           merge-multiple: true
 
       - uses: docker/setup-buildx-action@v3

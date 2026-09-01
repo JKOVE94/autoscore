@@ -16,6 +16,8 @@ backend/storage/uploads/*
 backend/storage/stems/*
 backend/storage/outputs/*
 !backend/storage/**/.gitkeep
+backend/static
+frontend/dist
 docs
 *.md
 !backend/README.md

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     storage_dir: str = "storage"
+    static_dir: str = "static"  # built web UI; served same-origin when present
     max_upload_mb: int = 100
 
     # Stemdeck
@@ -64,6 +65,13 @@ class Settings(BaseSettings):
     @property
     def storage_path(self) -> Path:
         p = Path(self.storage_dir)
+        if not p.is_absolute():
+            p = BACKEND_ROOT / p
+        return p
+
+    @property
+    def static_path(self) -> Path:
+        p = Path(self.static_dir)
         if not p.is_absolute():
             p = BACKEND_ROOT / p
         return p
