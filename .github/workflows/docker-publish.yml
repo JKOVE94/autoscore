@@ -23,6 +23,10 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+      - "k8s/**"
+      - "Makefile"
+      - "run"
+      - "scripts/**"
       - "LICENSE"
   workflow_dispatch:
 
