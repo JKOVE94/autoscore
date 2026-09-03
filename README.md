@@ -92,6 +92,21 @@ docker run -p 8000:8000 -v autoscore-data:/data ghcr.io/jkove94/autoscore:latest
 3. 다음 `main` push(또는 Actions 탭 수동 실행)부터 GHCR + Docker Hub 양쪽 발행 →
    Docker Desktop 검색창에 `<사용자명>/autoscore` 로 검색됨 (미설정 시 GHCR 만)
 
+### Kubernetes
+
+단일 이미지라 Pod 하나에 앱 전체가 들어갑니다 (`k8s/` : Deployment + PVC + Service + Ingress).
+
+```bash
+./run k8s                                              # kubectl apply -k k8s/ + rollout 대기
+kubectl -n autoscore port-forward svc/autoscore 8000:8000   # → http://localhost:8000
+./run k8s-down
+```
+
+- **replica 1** 고정 (job 파일이 RWO 볼륨 + 분석이 동기 요청). 스케일아웃은 잡 큐 선행 필요.
+- Ingress: `k8s/ingress.yaml` 에서 host·ingressClassName 수정. separate/analyze 장시간 요청 대비 프록시 타임아웃 900s 설정됨.
+- 튜닝은 `k8s/configmap.yaml`(env) · `k8s/pvc.yaml`(용량) · `k8s/kustomization.yaml`(이미지 태그).
+- 자세히: [`k8s/README.md`](k8s/README.md)
+
 **필요한 것**: Python 3.10–3.12, Node 20+, (선택) `ffmpeg`.
 `bootstrap` 없이도 `./run setup` 이 anaconda 등에 설치된 Python 3.11 을 자동 탐지합니다.
 

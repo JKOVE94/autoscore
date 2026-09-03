@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: autoscore
+  labels:
+    app.kubernetes.io/name: autoscore
+  annotations:
+    # separate / analyze / omr are long synchronous requests — raise the proxy
+    # timeouts well above the 60s default (ingress-nginx annotations shown)
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "900"
+    # match MAX_UPLOAD_MB
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  ingressClassName: nginx        # change to your controller's class
+  rules:
+    - host: autoscore.local      # change to a real hostname (or add to /etc/hosts)
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: autoscore
+                port:
+                  name: http

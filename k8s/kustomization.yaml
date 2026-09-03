@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: autoscore
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml            # remove this line for port-forward-only setups
+
+# pin a specific tag here instead of :latest, e.g. newTag: "1.2.3" or sha-xxxxxxx
+images:
+  - name: ghcr.io/jkove94/autoscore
+    newTag: latest

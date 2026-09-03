@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: autoscore-data
+  labels:
+    app.kubernetes.io/name: autoscore
+spec:
+  # ReadWriteOnce is enough — the Deployment runs a single replica (see
+  # deployment.yaml) and mounts this at /data for uploads / stems / outputs.
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+  # storageClassName: standard   # set to your cluster's class if there is no default

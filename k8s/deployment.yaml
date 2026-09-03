@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: autoscore
+  labels:
+    app.kubernetes.io/name: autoscore
+spec:
+  # Single replica on purpose: job artifacts live on an RWO PersistentVolume and
+  # the separate/analyze steps run synchronously in the request. Horizontal
+  # scaling needs an RWX volume (or object storage) + a job queue first.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: autoscore
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: autoscore
+    spec:
+      # let an in-flight analysis finish before the pod is killed
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: app
+          image: ghcr.io/jkove94/autoscore:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: autoscore-config
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30      # ~2.5 min for the audio stack to import cold
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            failureThreshold: 6       # don't restart the pod mid-analysis
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi             # raise (4-6Gi) if you built with WITH_DEMUCS=1
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: autoscore-data

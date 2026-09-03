@@ -8,6 +8,8 @@
 #   ./run setup        create the venv, install backend + frontend deps, seed .env
 #   ./run docker       one container: docker compose up --build  (:8000)
 #   ./run docker-down  stop the container
+#   ./run k8s          kubectl apply -k k8s/ + wait  (see k8s/README.md)
+#   ./run k8s-down     kubectl delete -k k8s/
 #   ./run doctor       check prerequisites and external engines
 #   ./run test         backend pytest + frontend typecheck
 #   ./run stop         free ports 8000 / 5173
@@ -200,6 +202,14 @@ cmd_docker() {
   exec docker compose -f "$ROOT/docker-compose.yml" up --build "$@"
 }
 
+cmd_k8s() {
+  command -v kubectl >/dev/null 2>&1 || { err "kubectl not found"; exit 1; }
+  step "kubectl apply -k k8s/"
+  kubectl apply -k "$ROOT/k8s"
+  kubectl -n autoscore rollout status deploy/autoscore --timeout=300s
+  printf "\n  ${c_grn}%s${c_reset}\n" "kubectl -n autoscore port-forward svc/autoscore $API_PORT:8000  →  http://localhost:$API_PORT"
+}
+
 case "${1:-start}" in
   start|"")    cmd_start ;;
   dev)         cmd_dev ;;
@@ -211,8 +221,10 @@ case "${1:-start}" in
   bootstrap)   shift; exec "$ROOT/scripts/bootstrap.sh" "$@" ;;
   docker)      shift; cmd_docker "$@" ;;
   docker-down) exec docker compose -f "$ROOT/docker-compose.yml" down ;;
+  k8s)         cmd_k8s ;;
+  k8s-down)    exec kubectl delete -k "$ROOT/k8s" ;;
   -h|--help|help)
-    sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
+    sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^#\{0,1\} \{0,1\}//' ;;
   *)
     err "unknown command: $1"; echo "try: ./run help"; exit 1 ;;
 esac

@@ -175,6 +175,14 @@
   `madmom`·`essentia` best-effort 설치. Homebrew 자체는 미설치 시 공식 명령 안내 후 종료.
   검증: 전 패키지 존재 상태에서 스킵→setup→doctor 정상.
 
+## Kubernetes 매니페스트 (완료)
+
+- `k8s/` : `namespace` · `configmap`(env) · `pvc`(RWO 5Gi → `/data`) · `deployment` · `service`(ClusterIP :8000) · `ingress`(nginx, 프록시 타임아웃 900s, body 100m) + `kustomization.yaml`(namespace/이미지태그).
+- Deployment: **replica 1 고정 + `strategy: Recreate`**(RWO 볼륨, 동기 분석). startup/readiness/liveness `/health`, liveness `failureThreshold:6`(분석 중 재시작 방지), `terminationGracePeriodSeconds:120`, resources 250m/512Mi ~ 2/2Gi.
+- `./run k8s`(apply -k + rollout wait + port-forward 안내), `./run k8s-down`. Makefile 반영.
+- 검증: `kubectl kustomize k8s/` 렌더 정상(라이브 클러스터 없음). port-forward 를 무설정 접근 경로로 안내.
+- `k8s/README.md` : 배포·접근·튜닝·한계(단일 replica, CoreML 없음, private 이미지 pull secret, StorageClass).
+
 ## 프론트/백엔드 결합 (완료)
 
 - `app/main.py._mount_web_ui()` : `STATIC_DIR`(기본 `backend/static`)에 빌드된 UI가 있으면
